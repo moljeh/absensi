@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Admin - Presensi Sekolah & Madrasah</title>
+
+    <!-- PWA Settings -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4f46e5">
+    <meta name="mobile-web-app-capable" content="yes">
+    
+    <!-- iOS / Apple PWA Support -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="EduAbsensi">
+    <link rel="apple-touch-icon" href="asset/logoapp.png">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="asset/favicon.png">
+
+    <!-- Deskripsi Standar Web -->
+    <meta name="description" content="Sistem Informasi Presensi Harian Siswa & Santri berbasis web online. Kelola absensi sekolah dengan mudah, cepat, dan terintegrasi secara realtime.">
+
+    <!-- Meta Tags Open Graph (WhatsApp, Facebook, Telegram, dll) -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="EduAbsensi - Sistem Presensi Online Sekolah & Madrasah">
+    <meta property="og:description" content="Aplikasi presensi harian siswa dan santri. Rekapitulasi absensi otomatis, praktis, dan akurat.">
+    <meta property="og:image" content="asset/logoweb.png">
+
+    <!-- Meta Tags Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="EduAbsensi - Sistem Presensi Online Sekolah & Madrasah">
+    <meta name="twitter:description" content="Aplikasi presensi harian siswa dan santri. Rekapitulasi absensi otomatis, praktis, dan akurat.">
+    <meta name="twitter:image" content="asset/logoweb.png">
+
+    <!-- Google Fonts & FontAwesome -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- External CSS & JS -->
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+
+<body>
+
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+<aside class="sidebar" id="sidebar">
+    <!-- Tombol Close (Pojok Kanan Atas) -->
+    <button class="close-sidebar-btn" onclick="toggleSidebar()">
+        <i class="fa-solid fa-xmark"></i>
+    </button>
+
+    <!-- Logo & Nama Sekolah -->
+    <div class="sidebar-brand">
+        <img src="asset/logoweb.png" alt="Logo Sekolah" class="school-logo">
+        <h2 class="school-name">SD NEGERI 1 INDONESIA</h2>
+    </div>
+
+    <!-- Menu Navigasi -->
+    <ul class="nav-menu">
+        <li class="active" onclick="switchTab('dashboard-page', this)">
+            <i class="fa-solid fa-chart-pie"></i> Dashboard
+        </li>
+        <li onclick="switchTab('master-page', this)">
+            <i class="fa-solid fa-user-gear"></i> Master Data Siswa
+        </li>
+        <li onclick="switchTab('absensi-page', this)">
+            <i class="fa-solid fa-clipboard-user"></i> Isi Absensi
+        </li>
+        <li onclick="switchTab('rekap-page', this)">
+            <i class="fa-solid fa-folder-open"></i> Rekap Data
+        </li>
+    </ul>
+</aside>
+
+    <div class="main-wrapper">
+        <header class="topbar">
+            <div class="topbar-left">
+                <button class="hamburger-btn" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+                <div class="user-greeting">
+                    <h4>Panel Administrator</h4>
+                    <p>Kelola presensi harian siswa / santri</p>
+                </div>
+            </div>
+            <div class="date-badge">
+                <i class="fa-regular fa-calendar"></i>
+                <span id="current-date"></span>
+            </div>
+        </header>
+
+        <main class="content">
+            
+            <!-- SECTION 1: DASHBOARD -->
+            <section id="dashboard-page" class="page-section active">
+                <div class="card-grid">
+                    <div class="card">
+                        <div class="card-info">
+                            <h5>Total Master Siswa</h5>
+                            <h2 id="stat-total-siswa">0</h2>
+                        </div>
+                        <div class="card-icon icon-blue"><i class="fa-solid fa-users"></i></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-info">
+                            <h5>Total Kelas / Rombel</h5>
+                            <h2 id="stat-total-kelas">0</h2>
+                        </div>
+                        <div class="card-icon icon-purple"><i class="fa-solid fa-school"></i></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-info">
+                            <h5>Laki-laki (L)</h5>
+                            <h2 id="stat-total-l">0</h2>
+                        </div>
+                        <div class="card-icon icon-green"><i class="fa-solid fa-user"></i></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-info">
+                            <h5>Perempuan (P)</h5>
+                            <h2 id="stat-total-p">0</h2>
+                        </div>
+                        <div class="card-icon icon-pink"><i class="fa-solid fa-user"></i></div>
+                    </div>
+                </div>
+
+                <!-- DYNAMIC CLASS CARDS -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3><i class="fa-solid fa-layer-group" style="color: var(--primary);"></i> Rincian Jumlah Siswa Per Kelas</h3>
+                    </div>
+                    <div class="class-grid" id="class-cards-container">
+                        <p style="color: var(--text-muted);">Memuat rincian kelas...</p>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3><i class="fa-solid fa-bullhorn" style="color: var(--primary);"></i> Status Koneksi Database</h3>
+                    </div>
+                    <p style="color: var(--text-muted); line-height: 1.6; font-size: 0.9rem;" id="db-status-info">
+                        Memeriksa koneksi ke Google Spreadsheet...
+                    </p>
+                </div>
+            </section>
+
+            <!-- SECTION 2: MASTER DATA SISWA -->
+            <section id="master-page" class="page-section">
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3>1. Master Data Siswa / Santri</h3>
+                        <button class="btn-template" onclick="downloadTemplateExcel()"><i class="fa-solid fa-file-excel"></i> Download Template</button>
+                    </div>
+
+                    <div class="controls-grid">
+                        <div class="form-group">
+                            <label for="excel-file">Upload Baru / Perbarui File Excel (NIS, Nama, Kelas, JK)</label>
+                            <input type="file" id="excel-file" class="form-control" accept=".xlsx, .xls">
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table id="master-table">
+                            <thead>
+                                <tr>
+                                    <th width="8%">No</th>
+                                    <th width="20%">NIS / NISN</th>
+                                    <th width="37%">Nama Siswa / Santri</th>
+                                    <th width="20%">Kelas / Rombel</th>
+                                    <th width="15%">L/P</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td colspan="5"><div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i><p>Memuat data dari Google Sheets...</p></div></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <button class="btn-primary" onclick="simpanMasterSiswa()"><i class="fa-solid fa-database"></i> Simpan Master Data Ke Database</button>
+                </div>
+            </section>
+
+            <!-- SECTION 3: ISI ABSENSI -->
+            <section id="absensi-page" class="page-section">
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3>2. Input Presensi Harian Siswa / Santri</h3>
+                    </div>
+
+                    <div class="controls-grid">
+                        <div class="form-group">
+                            <label for="kelas">Pilih Kelas / Rombel</label>
+                            <select id="kelas" class="form-control" onchange="filterDataAbsensi()">
+                                <option value="">-- Memuat Kelas... --</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="tanggal">Tanggal Presensi</label>
+                            <input type="date" id="tanggal" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table id="attendance-table">
+                            <thead>
+                                <tr>
+                                    <th width="8%">No</th>
+                                    <th width="22%">NIS / NISN</th>
+                                    <th width="45%">Nama Siswa / Santri</th>
+                                    <th width="25%">Status Kehadiran</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td colspan="4"><div class="empty-state"><i class="fa-solid fa-users-slash"></i><p>Silakan pilih Kelas / Rombel terlebih dahulu.</p></div></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <button class="btn-primary" onclick="simpanAbsensi()"><i class="fa-solid fa-floppy-disk"></i> Simpan Presensi Ke Database</button>
+                </div>
+            </section>
+
+            <!-- SECTION 4: REKAP DATA -->
+            <section id="rekap-page" class="page-section">
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3>Rekapitulasi Presensi Siswa / Santri</h3>
+                        <button class="btn-template" onclick="exportRekapExcel()"><i class="fa-solid fa-file-excel"></i> Export Rekap Excel</button>
+                    </div>
+
+                    <div class="controls-grid">
+                        <div class="form-group">
+                            <label for="rekap-kelas">Pilih Kelas / Rombel</label>
+                            <select id="rekap-kelas" class="form-control">
+                                <option value="">-- Memuat Kelas... --</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="rekap-bulan">Pilih Bulan</label>
+                            <select id="rekap-bulan" class="form-control">
+                                <option value="all">Semua Bulan (Per Tahun)</option>
+                                <option value="01">Januari</option>
+                                <option value="02">Februari</option>
+                                <option value="03">Maret</option>
+                                <option value="04">April</option>
+                                <option value="05">Mei</option>
+                                <option value="06">Juni</option>
+                                <option value="07">Juli</option>
+                                <option value="08">Agustus</option>
+                                <option value="09">September</option>
+                                <option value="10">Oktober</option>
+                                <option value="11">November</option>
+                                <option value="12">Desember</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="rekap-tahun">Pilih Tahun</label>
+                            <select id="rekap-tahun" class="form-control">
+                                <option value="2026" selected>2026</option>
+                                <option value="2027">2027</option>
+                                <option value="2028">2028</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button class="btn-primary" style="margin-bottom: 20px;" onclick="muatRekapData()">
+                        <i class="fa-solid fa-filter"></i> Tampilkan Rekap Data
+                    </button>
+
+                    <div class="table-responsive">
+                        <table id="rekap-table">
+                            <thead>
+                                <tr>
+                                    <th width="5%">No</th>
+                                    <th width="15%">NIS / NISN</th>
+                                    <th width="30%">Nama Siswa / Santri</th>
+                                    <th width="10%">Hadir</th>
+                                    <th width="10%">Sakit</th>
+                                    <th width="10%">Izin</th>
+                                    <th width="10%">Alpa</th>
+                                    <th width="10%">% Hadir</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td colspan="8"><div class="empty-state"><i class="fa-solid fa-folder-open"></i><p>Pilih Kelas, Bulan, dan Tahun lalu klik "Tampilkan Rekap Data".</p></div></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- External JavaScript -->
+    <script src="script.js"></script>
+</body>
+</html>
