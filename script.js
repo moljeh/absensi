@@ -31,57 +31,54 @@ function toggleSidebar() {
     const isOpen = sidebar.classList.contains('active');
 
     if (!isOpen) {
-        // BUKA SIDEBAR
         sidebar.classList.add('active');
         if (overlay) overlay.classList.add('active');
-
-        // Sisipkan state riwayat buatan agar tombol Back HP menangkap event ini
         history.pushState({ sidebarOpen: true }, '');
     } else {
-        // TUTUP SIDEBAR
         closeSidebarUI();
-
-        // Jika dipicu dari tombol X/overlay, kembalikan history 1 langkah ke belakang
         if (history.state && history.state.sidebarOpen) {
             history.back();
         }
     }
 }
 
-// 2. Fungsi Khusus Menutup Visual Sidebar (Tanpa Ganggu History)
+// 2. Fungsi Khusus Menutup Visual Sidebar
 function closeSidebarUI() {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebar-overlay');
-    
     if (sidebar) sidebar.classList.remove('active');
     if (overlay) overlay.classList.remove('active');
 }
 
-// 3. EVENT LISTENER: Tangkap Tombol Back di HP (Hardware / Gesture Back)
+// 3. EVENT LISTENER: Tangkap Tombol Back di HP
 window.addEventListener('popstate', function (event) {
     const sidebar = document.getElementById('sidebar');
-
-    // Jika sidebar sedang terbuka saat tombol Back HP ditekan, tutup sidebar saja
     if (sidebar && sidebar.classList.contains('active')) {
         closeSidebarUI();
     }
 });
 
-// 4. Perbarui Fungsi Pindah Halaman Menu (switchTab)
+// 4. Perbarui Fungsi Pindah Halaman Menu (switchTab) - DIPERBAIKI
 function switchTab(pageId, element) {
-    // Sembunyikan semua section halaman
-    document.querySelectorAll('.page-content').forEach(page => {
-        page.style.display = 'none';
+    // Sembunyikan semua section halaman (sesuai class di HTML & CSS)
+    document.querySelectorAll('.page-section').forEach(page => {
+        page.classList.remove('active');
     });
 
-    // Hilangkan status active dari semua menu
+    // Hilangkan status active dari semua menu sidebar
     document.querySelectorAll('.nav-menu li').forEach(li => {
         li.classList.remove('active');
     });
 
     // Tampilkan halaman terpilih & aktifkan menu
-    document.getElementById(pageId).style.display = 'block';
-    if (element) element.classList.add('active');
+    const targetPage = document.getElementById(pageId);
+    if(targetPage) {
+        targetPage.classList.add('active');
+    }
+    
+    if (element) {
+        element.classList.add('active');
+    }
 
     // JIKA DI HP: Otomatis tutup sidebar & bersihkan history setelah menu diklik
     const sidebar = document.getElementById('sidebar');
@@ -92,6 +89,10 @@ function switchTab(pageId, element) {
         }
     }
 }
+
+// ==========================================
+// FUNGSI UTAMA APLIKASI
+// ==========================================
 
 // 0. SEDOT/AMBIL DATA MASTER DARI DATABASE
 function muatMasterDataDariDatabase() {
@@ -109,15 +110,12 @@ function muatMasterDataDariDatabase() {
     .then(response => {
         if (response.result === 'success' && response.data && response.data.length > 0) {
             masterSiswaList = response.data;
-            
-            // KODE YANG DIPERBARUI (TEKS LEBIH FORMAL & PROFESIONAL):
             document.getElementById('db-status-info').innerHTML = `
                 <span style="color: var(--success); font-weight:700;">
                     <i class="fa-solid fa-circle-check"></i> Terhubung!
                 </span> 
                 Berhasil memuat ${masterSiswaList.length} data siswa/santri dari database.
             `;
-            
             updateDashboardUI();
             tampilkanMasterTabel(masterSiswaList);
             updateDropdownKelas();
@@ -140,7 +138,6 @@ function muatMasterDataDariDatabase() {
         updateDashboardUI();
     });
 }
-
 
 // UPDATE TAMPILAN DASHBOARD
 function updateDashboardUI() {
@@ -201,6 +198,7 @@ function updateDashboardUI() {
         container.appendChild(card);
     });
 }
+
 // 1. DOWNLOAD TEMPLATE EXCEL
 function downloadTemplateExcel() {
     const namaDepan = ["Ahmad", "Budi", "Citra", "Dewi", "Eko", "Fajar", "Gita", "Hana", "Indra", "Joko"];
@@ -274,7 +272,6 @@ function updateDropdownKelas() {
     const selectKelas = document.getElementById('kelas');
     const selectRekapKelas = document.getElementById('rekap-kelas');
     
-    // 1. Tambahkan opsi default "-- Pilih Kelas --"
     selectKelas.innerHTML = '<option value="">-- Pilih Kelas / Rombel --</option>';
     selectRekapKelas.innerHTML = '<option value="">-- Pilih Kelas / Rombel --</option>';
 
@@ -292,63 +289,8 @@ function updateDropdownKelas() {
         selectRekapKelas.appendChild(new Option(k, k));
     });
 
-    // 2. Set nilai default menjadi kosong agar wajib dipilih
     selectKelas.value = "";
-    
-    // 3. Jalankan filter untuk menampilkan pesan petunjuk awal
     filterDataAbsensi();
-}
-
-function filterDataAbsensi() {
-    const kelasTerpilih = document.getElementById('kelas').value;
-    const tbody = document.querySelector('#attendance-table tbody');
-    tbody.innerHTML = '';
-
-    // Jika belum ada kelas yang dipilih, tampilkan keterangan petunjuk
-    if (!kelasTerpilih) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="4">
-                    <div class="empty-state">
-                        <i class="fa-solid fa-hand-pointer" style="color: var(--primary);"></i>
-                        <p style="font-weight: 600; color: var(--text-dark); margin-top: 8px;">Silakan pilih Kelas / Rombel terlebih dahulu</p>
-                        <p style="font-size: 0.82rem; color: var(--text-muted);">Pilih kelas pada menu di atas untuk menampilkan daftar nama siswa.</p>
-                    </div>
-                </td>
-            </tr>`;
-        return;
-    }
-
-    const siswaKelas = masterSiswaList.filter(s => s.kelas === kelasTerpilih);
-
-    if (siswaKelas.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4"><div class="empty-state"><p>Tidak ada siswa/santri di kelas ini.</p></div></td></tr>`;
-        return;
-    }
-
-    siswaKelas.forEach((siswa, index) => {
-        const tr = document.createElement('tr');
-        
-        tr.onclick = function() {
-            document.querySelectorAll('#attendance-table tbody tr').forEach(r => r.classList.remove('selected-row'));
-            tr.classList.add('selected-row');
-        };
-
-        tr.innerHTML = `
-            <td><strong>${index + 1}</strong></td>
-            <td><code>${siswa.nis}</code></td>
-            <td><strong class="student-name">${siswa.nama}</strong></td>
-            <td>
-                <select class="status-select" name="status_${index}" onfocus="this.closest('tr').click()">
-                    <option value="Hadir" selected>Hadir</option>
-                    <option value="Sakit">Sakit</option>
-                    <option value="Izin">Izin</option>
-                    <option value="Alpa">Alpa</option>
-                </select>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
 }
 
 // 3. SIMPAN MASTER DATA
@@ -371,13 +313,12 @@ function simpanMasterSiswa() {
     .finally(() => { btn.disabled = false; btn.innerHTML = originalText; });
 }
 
-// 4. FILTER INPUT PRESENSI (FITUR HIGHLIGHT BARIS TERPILIH)
+// 4. FILTER INPUT PRESENSI (SUDAH DIBERSIHKAN DUPLIKASINYA)
 function filterDataAbsensi() {
     const kelasTerpilih = document.getElementById('kelas').value;
     const tbody = document.querySelector('#attendance-table tbody');
     tbody.innerHTML = '';
 
-    // Jika belum ada kelas yang dipilih, tampilkan keterangan & petunjuk untuk Guru
     if (!kelasTerpilih) {
         tbody.innerHTML = `
             <tr>
@@ -391,7 +332,6 @@ function filterDataAbsensi() {
                             Pilih kelas yang Anda ampu dari menu dropdown di atas untuk menampilkan daftar nama siswa.
                         </p>
                         
-                        <!-- Kotak Petunjuk Pencegahan Salah Pilih -->
                         <div style="display: inline-block; text-align: left; background: var(--warning-bg); border-left: 4px solid var(--warning); padding: 12px 16px; border-radius: 8px; max-width: 500px; font-size: 0.83rem; color: #78350f; line-height: 1.5;">
                             <strong style="display: flex; align-items: center; gap: 6px; font-size: 0.88rem; margin-bottom: 4px;">
                                 <i class="fa-solid fa-triangle-exclamation" style="color: #d97706;"></i> Petunjuk Penting:
@@ -637,3 +577,60 @@ if ('serviceWorker' in navigator) {
             .catch(err => console.error('PWA Service Worker Gagal:', err));
     });
 }
+
+// ==========================================
+// PWA INSTALL PROMPT (NOTIFIKASI INSTALL)
+// ==========================================
+let deferredPrompt;
+const pwaBanner = document.getElementById('pwa-install-banner');
+const btnInstallPwa = document.getElementById('btn-install-pwa');
+const btnClosePwa = document.getElementById('btn-close-pwa');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    // Mencegah browser langsung menampilkan prompt install default
+    e.preventDefault();
+    
+    // Simpan event untuk dipicu nanti
+    deferredPrompt = e;
+    
+    // Tampilkan banner custom kita (misal ditunda 2 detik agar tidak terlalu mendadak)
+    setTimeout(() => {
+        if (pwaBanner) {
+            pwaBanner.classList.add('show');
+        }
+    }, 2000);
+});
+
+// Event ketika tombol "Install" di banner diklik
+if (btnInstallPwa) {
+    btnInstallPwa.addEventListener('click', async () => {
+        // Sembunyikan banner
+        if (pwaBanner) pwaBanner.classList.remove('show');
+        
+        if (deferredPrompt) {
+            // Tampilkan prompt install bawaan sistem
+            deferredPrompt.prompt();
+            
+            // Tunggu respon pengguna
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log(`Respon User: ${outcome}`);
+            
+            // Reset prompt agar tidak bisa dipanggil lagi
+            deferredPrompt = null;
+        }
+    });
+}
+
+// Event ketika tombol silang / close di banner diklik
+if (btnClosePwa) {
+    btnClosePwa.addEventListener('click', () => {
+        if (pwaBanner) pwaBanner.classList.remove('show');
+    });
+}
+
+// Event untuk melacak jika aplikasi sukses diinstall
+window.addEventListener('appinstalled', () => {
+    if (pwaBanner) pwaBanner.classList.remove('show');
+    deferredPrompt = null;
+    console.log('Aplikasi PWA berhasil diinstall ke sistem.');
+});
