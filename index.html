@@ -137,13 +137,17 @@
                     </div>
                 </div>
 
-                <div class="panel">
+              <div class="panel">
                     <div class="panel-header">
-                        <h3><i class="fa-solid fa-bullhorn" style="color: var(--primary);"></i> Status Koneksi Database</h3>
+                        <h3><i class="fa-solid fa-clipboard-check" style="color: var(--success);"></i> Laporan Presensi Hari Ini</h3>
+                        <button class="btn-template" onclick="muatLaporanHariIni()" style="padding: 6px 12px; font-size: 0.75rem;"><i class="fa-solid fa-rotate"></i> Refresh Data</button>
                     </div>
-                    <p style="color: var(--text-muted); line-height: 1.6; font-size: 0.9rem;" id="db-status-info">
-                        Memeriksa koneksi ke Google Spreadsheet...
-                    </p>
+                    <div id="today-summary-container">
+                        <div class="empty-state" style="padding: 20px;">
+                            <i class="fa-solid fa-spinner fa-spin"></i>
+                            <p>Memuat laporan presensi hari ini...</p>
+                        </div>
+                    </div>
                 </div>
             </section>
 

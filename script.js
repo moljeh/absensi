@@ -1,4 +1,4 @@
-const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbyaC1v9kRYqpEuQ6hlQFnjni-vWmospAwP-VbZBHK9qZzBHs7LwpHVuh9iGbapy-LRA6A/exec";
+const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbzJTLcXJvoqwHnymgOBw-04TCmsvc0XDAX2NXwyQDLSZdL3mztsugcnGJ066xOQMnSrsQ/exec";
 let masterSiswaList = [];
 let rekapSiswaHasil = [];
 
@@ -16,6 +16,7 @@ document.getElementById('tanggal').value = `${year}-${month}-${day}`;
 // AUTO FETCH SAAT MEMBUKA WEBSITE
 document.addEventListener('DOMContentLoaded', function() {
     muatMasterDataDariDatabase();
+    muatLaporanHariIni(); // <--- Tambahkan baris ini
 });
 
 // ==========================================
@@ -110,6 +111,10 @@ function muatMasterDataDariDatabase() {
     .then(response => {
         if (response.result === 'success' && response.data && response.data.length > 0) {
             masterSiswaList = response.data;
+			
+			updateDashboardUI(); 
+            muatLaporanHariIni();
+			
             document.getElementById('db-status-info').innerHTML = `
                 <span style="color: var(--success); font-weight:700;">
                     <i class="fa-solid fa-circle-check"></i> Terhubung!
@@ -197,6 +202,77 @@ function updateDashboardUI() {
         `;
         container.appendChild(card);
     });
+}
+
+
+// ----------------------------------------------------
+// FUNGSI LAPORAN PRESENSI HARI INI
+// ----------------------------------------------------
+function muatLaporanHariIni() {
+    const container = document.getElementById('today-summary-container');
+    container.innerHTML = `<div class="empty-state" style="padding: 20px;"><i class="fa-solid fa-spinner fa-spin"></i><p>Sedang merekap presensi hari ini...</p></div>`;
+
+    const tanggalHariIni = document.getElementById('tanggal').value; 
+    const payload = { action: "get_today_summary", tanggal: tanggalHariIni };
+
+    fetch(URL_WEB_APP, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(response => {
+        if (response.result === 'success') {
+            renderLaporanHariIni(response.data);
+        } else {
+            container.innerHTML = `<div class="empty-state"><p style="color:var(--danger)">Gagal memuat laporan harian.</p></div>`;
+        }
+    })
+    .catch(err => {
+        container.innerHTML = `<div class="empty-state"><p style="color:var(--danger)">Koneksi ke server bermasalah.</p></div>`;
+    });
+}
+
+function renderLaporanHariIni(dataSummary) {
+    const container = document.getElementById('today-summary-container');
+    const daftarKelas = [...new Set(masterSiswaList.map(s => s.kelas))].sort();
+    
+    if (daftarKelas.length === 0) {
+        container.innerHTML = '<p style="color: var(--text-muted); text-align:center;">Belum ada master data kelas untuk ditampilkan.</p>';
+        return;
+    }
+
+    let html = '<div class="summary-list">';
+    
+    daftarKelas.forEach(kelas => {
+        const stat = dataSummary[kelas];
+        
+        // Jika kelas sudah absen hari ini
+        if (stat && stat.submitted) {
+            html += `
+            <div class="summary-item">
+                <div class="summary-class-name"><i class="fa-solid fa-chalkboard-user" style="color:var(--primary); margin-right:6px;"></i> ${kelas}</div>
+                <div class="summary-badges">
+                    <span class="summary-badge s-hadir">Hadir: ${stat.hadir}</span>
+                    ${stat.sakit > 0 ? `<span class="summary-badge s-sakit">Sakit: ${stat.sakit}</span>` : ''}
+                    ${stat.izin > 0 ? `<span class="summary-badge s-izin">Izin: ${stat.izin}</span>` : ''}
+                    ${stat.alpa > 0 ? `<span class="summary-badge s-alpa">Alpa: ${stat.alpa}</span>` : ''}
+                </div>
+            </div>`;
+        } else {
+            // Jika kelas belum absen hari ini
+            html += `
+            <div class="summary-item">
+                <div class="summary-class-name"><i class="fa-solid fa-chalkboard-user" style="color:var(--text-muted); margin-right:6px;"></i> ${kelas}</div>
+                <div class="summary-badges">
+                    <span class="summary-badge s-belum"><i class="fa-solid fa-clock"></i> Belum Absen</span>
+                </div>
+            </div>`;
+        }
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
 }
 
 // 1. DOWNLOAD TEMPLATE EXCEL

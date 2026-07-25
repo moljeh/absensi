@@ -345,3 +345,18 @@ table td { padding: 12px 14px; border-bottom: 1px solid var(--border); font-size
 .btn-pwa-close:hover {
     color: var(--danger);
 }
+
+
+/* ==========================================
+   LAPORAN PRESENSI HARI INI (DASHBOARD)
+   ========================================== */
+.summary-list { display: flex; flex-direction: column; gap: 12px; }
+.summary-item { background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+.summary-class-name { font-weight: 700; color: var(--text-dark); font-size: 0.95rem; }
+.summary-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+.summary-badge { padding: 4px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; }
+.s-hadir { background: var(--success-bg); color: #065f46; }
+.s-sakit { background: var(--warning-bg); color: #92400e; }
+.s-izin { background: var(--info-bg); color: #1e40af; }
+.s-alpa { background: var(--danger-bg); color: #991b1b; }
+.s-belum { background: #f1f5f9; color: #64748b; font-style: italic; }

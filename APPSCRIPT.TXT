@@ -1,5 +1,13 @@
 function doPost(e) {
+  // ====================================================
+  // INISIALISASI LOCK SERVICE (ANTI TABRAKAN DATA)
+  // ====================================================
+  var lock = LockService.getScriptLock();
+  
   try {
+    // Tunggu maksimal 10 detik jika ada proses lain yang sedang berjalan
+    lock.waitLock(10000);
+
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var contents = JSON.parse(e.postData.contents);
     var action = contents.action;
@@ -166,9 +174,66 @@ function doPost(e) {
       ).setMimeType(ContentService.MimeType.JSON);
     }
 
+
+// ====================================================
+    // 5. AMBIL LAPORAN PRESENSI HARI INI SEMUA KELAS
+    // ====================================================
+    else if (action === "get_today_summary") {
+      var todayStr = contents.tanggal;
+      var sheets = ss.getSheets();
+      var summary = {};
+
+      for (var s = 0; s < sheets.length; s++) {
+        var sheetName = sheets[s].getName();
+        if (sheetName.startsWith("Absensi_")) {
+          var namaKelas = sheetName.replace("Absensi_", "");
+          if (!summary[namaKelas]) {
+             summary[namaKelas] = { hadir: 0, sakit: 0, izin: 0, alpa: 0, submitted: false };
+          }
+          
+          var data = sheets[s].getDataRange().getValues();
+          for (var r = 1; r < data.length; r++) {
+            var rawTgl = data[r][1];
+            var tglStr = "";
+            
+            if (rawTgl instanceof Date) {
+              var y = rawTgl.getFullYear();
+              var m = String(rawTgl.getMonth() + 1).padStart(2, '0');
+              var d = String(rawTgl.getDate()).padStart(2, '0');
+              tglStr = y + "-" + m + "-" + d;
+            } else {
+              tglStr = String(rawTgl);
+            }
+
+            // Jika tanggal cocok, hitung statusnya
+            if (tglStr === todayStr) {
+               summary[namaKelas].submitted = true;
+               var status = String(data[r][5]).trim().toLowerCase();
+               if (status === 'hadir') summary[namaKelas].hadir++;
+               else if (status === 'sakit') summary[namaKelas].sakit++;
+               else if (status === 'izin') summary[namaKelas].izin++;
+               else if (status === 'alpa') summary[namaKelas].alpa++;
+            }
+          }
+        }
+      }
+      return ContentService.createTextOutput(
+        JSON.stringify({ result: "success", data: summary })
+      ).setMimeType(ContentService.MimeType.JSON);
+    }
+
+
   } catch (error) {
+    // Tangkap error jika terjadi masalah pada script atau lock timeout
     return ContentService.createTextOutput(
       JSON.stringify({ result: "error", message: error.toString() })
     ).setMimeType(ContentService.MimeType.JSON);
+    
+  } finally {
+    // ====================================================
+    // LEPASKAN KUNCI (WAJIB ADA)
+    // ====================================================
+    // Memastikan antrean dibuka kembali setelah proses selesai / error
+    lock.releaseLock();
   }
 }
