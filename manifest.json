@@ -1,8 +1,8 @@
-manifest.json{
+{
   "name": "EduAbsensi - Presensi Sekolah & Madrasah",
   "short_name": "EduAbsensi",
   "description": "Sistem Informasi Presensi Harian Siswa & Santri berbasis Web dan PWA",
-  "start_url": "./index.html",
+  "start_url": ".",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#4f46e5",

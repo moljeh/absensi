@@ -1,4 +1,4 @@
-sw.jsconst CACHE_NAME = 'eduabsensi-v1';
+const CACHE_NAME = 'eduabsensi-v1';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
@@ -10,11 +10,20 @@ const ASSETS_TO_CACHE = [
     './asset/favicon.png'
 ];
 
-// Install Service Worker
+// Install Service Worker (Dengan Error Handling)
 self.addEventListener('install', (event) => {
     event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => {
-            return cache.addAll(ASSETS_TO_CACHE);
+        caches.open(CACHE_NAME).then(async (cache) => {
+            console.log('Mulai melakukan caching aset...');
+            for (let asset of ASSETS_TO_CACHE) {
+                try {
+                    await cache.add(asset);
+                } catch (error) {
+                    // Jika ada 1 file yang gagal/tidak ditemukan, error hanya dicatat
+                    // namun instalasi Service Worker (PWA) akan tetap dilanjutkan
+                    console.warn(`[PWA] Gagal meng-cache file: ${asset}`, error);
+                }
+            }
         })
     );
     self.skipWaiting();

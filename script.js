@@ -1,4 +1,4 @@
-const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbyyJE4C198TWlN0wtVDgymNSqAOwTzUKkxZRVknjTka6YHu9rz--UqnBBOOmebPfvpO2Q/exec";
+const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbyaC1v9kRYqpEuQ6hlQFnjni-vWmospAwP-VbZBHK9qZzBHs7LwpHVuh9iGbapy-LRA6A/exec";
 let masterSiswaList = [];
 let rekapSiswaHasil = [];
 
