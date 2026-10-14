@@ -81,6 +81,13 @@ body { background-color: var(--bg-main); color: var(--text-dark); display: flex;
 .panel-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
 .panel-header h3 { font-size: 1.05rem; font-weight: 700; }
 
+/* AKORDEON */
+.accordion-header { cursor: pointer; transition: background-color 0.2s, padding 0.2s; border-radius: 8px; padding: 10px; margin: -10px -10px 10px -10px; border-bottom: none !important; }
+.accordion-header:hover { background-color: var(--bg-main); }
+.toggle-icon { color: var(--text-muted); font-size: 1.1rem; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+.toggle-icon.open { transform: rotate(180deg); color: var(--primary); }
+.collapsible-content { border-top: 1px solid var(--border); padding-top: 20px; animation: fadeIn 0.4s ease; }
+
 .controls-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 20px; }
 .form-group { display: flex; flex-direction: column; gap: 6px; }
 .form-group label { font-size: 0.85rem; font-weight: 600; }
@@ -91,6 +98,13 @@ body { background-color: var(--bg-main); color: var(--text-dark); display: flex;
 .btn-danger { background-color: var(--danger); color: white; border: none; padding: 12px 20px; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; }
 .button-group { display: flex; gap: 12px; flex-wrap: wrap; }
 .button-group button { flex: 1; min-width: 200px; }
+
+/* FILE UPLOAD MODERN */
+.custom-file-upload { display: flex; align-items: center; gap: 12px; background-color: var(--bg-main); border: 1px dashed var(--primary); padding: 10px 12px; border-radius: 8px; transition: all 0.3s ease; }
+.custom-file-upload:hover { background-color: var(--primary-light); border-color: var(--primary-hover); }
+.btn-file-modern { background-color: var(--primary); color: white; padding: 8px 16px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: background-color 0.2s; white-space: nowrap; }
+.btn-file-modern:hover { background-color: var(--primary-hover); }
+.file-name-text { font-size: 0.85rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 250px; }
 
 .table-responsive { width: 100%; overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 20px; -webkit-overflow-scrolling: touch; }
 table { width: 100%; border-collapse: collapse; text-align: left; min-width: 500px; }

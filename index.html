@@ -54,8 +54,9 @@
             <li onclick="switchTab('rekap-page', this)">
                 <i class="fa-solid fa-folder-open"></i> Rekap Data
             </li>
+            <!-- MENU PENGATURAN -->
             <li onclick="switchTab('pengaturan-page', this)">
-                <i class="fa-solid fa-map-location-dot"></i> Pengaturan Lokasi
+                <i class="fa-solid fa-gears"></i> Pengaturan
             </li>
         </ul>
     </aside>
@@ -110,12 +111,16 @@
                     </div>
                 </div>
 
+                <!-- PANEL RINCIAN KELAS BUKA-TUTUP (AKORDEON) -->
                 <div class="panel">
-                    <div class="panel-header">
+                    <div class="panel-header accordion-header" onclick="toggleRincianKelas()">
                         <h3><i class="fa-solid fa-layer-group" style="color: var(--primary);"></i> Rincian Jumlah Siswa Per Kelas</h3>
+                        <i class="fa-solid fa-chevron-down toggle-icon" id="icon-rincian"></i>
                     </div>
-                    <div class="class-grid" id="class-cards-container">
-                        <p style="color: var(--text-muted);">Memuat rincian kelas...</p>
+                    <div class="collapsible-content" id="rincian-content" style="display: none;">
+                        <div class="class-grid" id="class-cards-container">
+                            <p style="color: var(--text-muted);">Memuat rincian kelas...</p>
+                        </div>
                     </div>
                 </div>
 
@@ -143,8 +148,15 @@
 
                     <div class="controls-grid">
                         <div class="form-group">
-                            <label for="excel-file">Upload Baru / Perbarui File Excel (NIS, Nama, Kelas, JK)</label>
-                            <input type="file" id="excel-file" class="form-control" accept=".xlsx, .xls">
+                            <label>Upload Baru / Perbarui File Excel (NIS, Nama, Kelas, JK)</label>
+                            <!-- Wadah File Upload Modern -->
+                            <div class="custom-file-upload">
+                                <input type="file" id="excel-file" accept=".xlsx, .xls" hidden>
+                                <label for="excel-file" class="btn-file-modern">
+                                    <i class="fa-solid fa-cloud-arrow-up"></i> Pilih File Excel
+                                </label>
+                                <span id="file-name-display" class="file-name-text">Belum ada file terpilih...</span>
+                            </div>
                         </div>
                     </div>
 
@@ -196,23 +208,6 @@
                             <label for="tanggal">Tanggal Presensi</label>
                             <input type="date" id="tanggal" class="form-control">
                         </div>
-                    </div>
-
-                    <div class="location-panel">
-                        <div class="location-info">
-                            <i class="fa-solid fa-map-location-dot location-icon"></i>
-                            <div class="location-text">
-                                <h4>Verifikasi Titik Lokasi Absensi</h4>
-                                <p id="koordinat-text">Koordinat: Belum didapatkan</p>
-                                <span id="radius-status" class="loc-status loc-wait">
-                                    <i class="fa-solid fa-circle-notch fa-spin" style="display:none;" id="loc-spinner"></i>
-                                    Menunggu deteksi lokasi...
-                                </span>
-                            </div>
-                        </div>
-                        <button class="btn-location" id="btn-cek-lokasi" onclick="dapatkanLokasi()">
-                            <i class="fa-solid fa-location-crosshairs"></i> Deteksi Lokasi Saya
-                        </button>
                     </div>
 
                     <div class="table-responsive">
@@ -315,12 +310,12 @@
             <section id="pengaturan-page" class="page-section">
                 <div class="panel">
                     <div class="panel-header">
-                        <h3><i class="fa-solid fa-gear" style="color: var(--primary);"></i> Pengaturan Lokasi & Radius Absensi</h3>
+                        <h3><i class="fa-solid fa-gears" style="color: var(--primary);"></i> Pengaturan Lokasi & Jam Absensi</h3>
                     </div>
                     
                     <div style="background: var(--info-bg); border-left: 4px solid var(--info); padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 0.88rem; color: #1e40af; line-height: 1.5;">
                         <strong>Petunjuk Penggunaan:</strong><br>
-                        Tentukan titik kordinat (Garis Lintang & Bujur) sekolah Anda agar absensi berbasis lokasi (GPS) akurat. Anda dapat mengisi manual atau klik tombol biru <b>"Gunakan Lokasi Saat Ini"</b>.
+                        Tentukan Titik Koordinat (Radius) dan Batas Jam Absensi di sekolah Anda. Sistem akan menolak presensi yang dilakukan di luar batas radius dan di luar jam operasional yang telah ditetapkan.
                     </div>
 
                     <div class="controls-grid">
@@ -333,13 +328,23 @@
                             <input type="number" step="any" id="set-lng" class="form-control" placeholder="106.816666">
                         </div>
                         <div class="form-group">
-                            <label for="set-radius">Batas Radius Maksimal (Meter)</label>
+                            <label for="set-radius">Batas Radius (Meter)</label>
                             <input type="number" id="set-radius" class="form-control" placeholder="50">
+                        </div>
+                        
+                        <!-- PENGATURAN JAM -->
+                        <div class="form-group">
+                            <label for="set-waktu-mulai">Waktu Mulai Absensi</label>
+                            <input type="time" id="set-waktu-mulai" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label for="set-waktu-selesai">Waktu Batas Akhir Absensi</label>
+                            <input type="time" id="set-waktu-selesai" class="form-control">
                         </div>
                     </div>
 
                     <div class="button-group" style="margin-top: 15px;">
-                        <button class="btn-location" onclick="autoFillLokasiSekolah()" style="flex: 1; padding: 12px; justify-content: center;">
+                        <button class="btn-location" onclick="autoFillLokasiSekolah()" style="flex: 1; padding: 12px; justify-content: center; background-color: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
                             <i class="fa-solid fa-location-crosshairs"></i> Gunakan Lokasi Saat Ini
                         </button>
                         <button class="btn-primary" onclick="simpanPengaturanLokasi()" style="flex: 1;">

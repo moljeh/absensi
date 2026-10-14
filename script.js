@@ -1,14 +1,14 @@
-const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbwlC3jaqhBjaHMfbE4dsuBpcVX_bsZZBHHMkkIy8kqzuO7R4kVoW2V1tOzP5nUO0HNCgQ/exec";
+const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbzJtdR7g9fa3g_YLdO6eX_9dOXjeB7wyrSlbZX9uZDNWRVP1f28_-r9xLqFdhozAeS0ew/exec";
 
 // ==========================================
-// VARIABEL LOKASI SEKOLAH & RADIUS 
+// VARIABEL PENGATURAN (Dinamis dari Database)
 // ==========================================
 let SCHOOL_LAT = -6.200000; 
 let SCHOOL_LNG = 106.816666;
 let MAX_RADIUS_METERS = 50; 
+let WAKTU_MULAI = "00:00";
+let WAKTU_SELESAI = "23:59";
 
-let isLocationValid = false;
-let userLocationString = "Lokasi tidak diverifikasi";
 let masterSiswaList = [];
 let rekapSiswaHasil = [];
 
@@ -25,10 +25,17 @@ document.addEventListener('DOMContentLoaded', function() {
     muatPengaturanLokasi(); 
     muatMasterDataDariDatabase();
     muatLaporanHariIni(); 
+
+    // FITUR REAL-TIME: Perbarui laporan presensi secara otomatis setiap 60 detik
+    setInterval(() => {
+        if (!document.hidden) {
+            muatLaporanHariIni(true); 
+        }
+    }, 60000);
 });
 
 // ==========================================
-// KONTROL NAVIGASI MENU
+// KONTROL NAVIGASI MENU & AKORDEON
 // ==========================================
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
@@ -72,42 +79,107 @@ function switchTab(pageId, element) {
     }
 }
 
+function toggleRincianKelas() {
+    const content = document.getElementById('rincian-content');
+    const icon = document.getElementById('icon-rincian');
+    if (!content || !icon) return;
+    
+    if (content.style.display === 'none' || content.style.display === '') {
+        content.style.display = 'block';
+        icon.classList.add('open');
+    } else {
+        content.style.display = 'none';
+        icon.classList.remove('open');
+    }
+}
+
 // ==========================================
-// PENGATURAN KOORDINAT LOKASI
+// PENGATURAN KOORDINAT LOKASI & JAM ABSENSI
 // ==========================================
 function muatPengaturanLokasi() {
-    const savedLat = localStorage.getItem('school_lat');
-    const savedLng = localStorage.getItem('school_lng');
-    const savedRadius = localStorage.getItem('school_radius');
+    fetch(URL_WEB_APP, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: "get_pengaturan" })
+    })
+    .then(res => res.json())
+    .then(response => {
+        if (response.result === 'success') {
+            SCHOOL_LAT = response.data.lat;
+            SCHOOL_LNG = response.data.lng;
+            MAX_RADIUS_METERS = response.data.radius || 50;
+            WAKTU_MULAI = response.data.waktu_mulai || "00:00";
+            WAKTU_SELESAI = response.data.waktu_selesai || "23:59";
 
-    if (savedLat) SCHOOL_LAT = parseFloat(savedLat);
-    if (savedLng) SCHOOL_LNG = parseFloat(savedLng);
-    if (savedRadius) MAX_RADIUS_METERS = parseInt(savedRadius);
-
-    document.getElementById('set-lat').value = SCHOOL_LAT;
-    document.getElementById('set-lng').value = SCHOOL_LNG;
-    document.getElementById('set-radius').value = MAX_RADIUS_METERS;
+            const latEl = document.getElementById('set-lat');
+            const lngEl = document.getElementById('set-lng');
+            const radiusEl = document.getElementById('set-radius');
+            const mulaiEl = document.getElementById('set-waktu-mulai');
+            const selesaiEl = document.getElementById('set-waktu-selesai');
+            
+            if(latEl) latEl.value = SCHOOL_LAT;
+            if(lngEl) lngEl.value = SCHOOL_LNG;
+            if(radiusEl) radiusEl.value = MAX_RADIUS_METERS;
+            if(mulaiEl) mulaiEl.value = WAKTU_MULAI;
+            if(selesaiEl) selesaiEl.value = WAKTU_SELESAI;
+        }
+    })
+    .catch(err => console.error("Gagal memuat pengaturan lokasi", err));
 }
 
 function simpanPengaturanLokasi() {
-    const lat = parseFloat(document.getElementById('set-lat').value);
-    const lng = parseFloat(document.getElementById('set-lng').value);
-    const radius = parseInt(document.getElementById('set-radius').value);
+    const latEl = document.getElementById('set-lat');
+    const lngEl = document.getElementById('set-lng');
+    const radiusEl = document.getElementById('set-radius');
+    const mulaiEl = document.getElementById('set-waktu-mulai');
+    const selesaiEl = document.getElementById('set-waktu-selesai');
+    
+    if (!latEl || !lngEl || !radiusEl || !mulaiEl || !selesaiEl) return;
 
-    if (isNaN(lat) || isNaN(lng) || isNaN(radius)) {
-        Swal.fire('Peringatan', 'Harap isi semua kolom pengaturan dengan angka yang valid.', 'warning');
+    const lat = parseFloat(latEl.value);
+    const lng = parseFloat(lngEl.value);
+    const radius = parseInt(radiusEl.value);
+    const waktuMulai = mulaiEl.value;
+    const waktuSelesai = selesaiEl.value;
+
+    if (isNaN(lat) || isNaN(lng) || isNaN(radius) || !waktuMulai || !waktuSelesai) {
+        Swal.fire('Peringatan', 'Harap isi semua kolom pengaturan dengan valid.', 'warning');
         return;
     }
 
     SCHOOL_LAT = lat;
     SCHOOL_LNG = lng;
     MAX_RADIUS_METERS = radius;
+    WAKTU_MULAI = waktuMulai;
+    WAKTU_SELESAI = waktuSelesai;
 
-    localStorage.setItem('school_lat', SCHOOL_LAT);
-    localStorage.setItem('school_lng', SCHOOL_LNG);
-    localStorage.setItem('school_radius', MAX_RADIUS_METERS);
+    const btn = document.querySelector('#pengaturan-page .btn-primary');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan...';
 
-    Swal.fire('Tersimpan', 'Pengaturan koordinat dan radius berhasil disimpan.', 'success');
+    Swal.fire({
+        title: 'Menyimpan Pengaturan...',
+        text: 'Mohon tunggu, jangan tutup halaman ini.',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+    });
+
+    fetch(URL_WEB_APP, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: "simpan_pengaturan", lat: lat, lng: lng, radius: radius, waktu_mulai: waktuMulai, waktu_selesai: waktuSelesai })
+    })
+    .then(res => res.json())
+    .then(response => {
+        if (response.result === 'success') {
+            Swal.fire('Tersimpan', 'Pengaturan berhasil disimpan ke Database.', 'success');
+        } else {
+            Swal.fire('Gagal!', response.message, 'error');
+        }
+    })
+    .catch(err => Swal.fire('Error', 'Gagal menyimpan pengaturan ke database.', 'error'))
+    .finally(() => { btn.disabled = false; btn.innerHTML = originalText; });
 }
 
 function autoFillLokasiSekolah() {
@@ -125,21 +197,23 @@ function autoFillLokasiSekolah() {
 
     navigator.geolocation.getCurrentPosition(
         (position) => {
-            document.getElementById('set-lat').value = position.coords.latitude.toFixed(6);
-            document.getElementById('set-lng').value = position.coords.longitude.toFixed(6);
+            const latEl = document.getElementById('set-lat');
+            const lngEl = document.getElementById('set-lng');
+            if(latEl) latEl.value = position.coords.latitude.toFixed(6);
+            if(lngEl) lngEl.value = position.coords.longitude.toFixed(6);
             Swal.close();
             Swal.fire('Berhasil', 'Lokasi saat ini berhasil ditarik. Jangan lupa klik "Simpan Pengaturan".', 'info');
         },
         (error) => {
             Swal.close();
-            Swal.fire('Gagal', 'Tidak dapat mengambil lokasi. Pastikan izin lokasi (GPS) diaktifkan.', 'error');
+            Swal.fire('Gagal', 'Tidak dapat mengambil lokasi. Pastikan izin lokasi (GPS) diaktifkan pada perangkat.', 'error');
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
 }
 
 // ==========================================
-// DATA MASTER SISWA
+// DATA MASTER SISWA & FILE IMPORT MODERN
 // ==========================================
 function muatMasterDataDariDatabase() {
     const tbody = document.querySelector('#master-table tbody');
@@ -179,6 +253,13 @@ function simpanMasterSiswa() {
     btn.disabled = true;
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan...';
 
+    Swal.fire({
+        title: 'Menyimpan Master Data...',
+        text: 'Mohon tunggu, jangan tutup halaman ini.',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+    });
+
     fetch(URL_WEB_APP, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -195,9 +276,11 @@ function simpanMasterSiswa() {
 
 function updateDashboardUI() {
     const container = document.getElementById('class-cards-container');
+    if (!container) return;
     container.innerHTML = '';
+    
     if (masterSiswaList.length === 0) {
-        container.innerHTML = '<p style="color: var(--text-muted);">Belum ada data siswa.</p>';
+        container.innerHTML = '<div style="grid-column: 1 / -1;"><p style="color: var(--text-muted);">Belum ada data siswa.</p></div>';
         document.getElementById('stat-total-siswa').innerText = 0;
         document.getElementById('stat-total-kelas').innerText = 0;
         document.getElementById('stat-total-l').innerText = 0;
@@ -259,7 +342,14 @@ function updateDropdownKelas() {
 
 document.getElementById('excel-file').addEventListener('change', function(e) {
     const file = e.target.files[0];
-    if (!file) return;
+    const fileNameDisplay = document.getElementById('file-name-display');
+    
+    if (!file) {
+        if (fileNameDisplay) fileNameDisplay.innerText = "Belum ada file terpilih...";
+        return;
+    }
+    if (fileNameDisplay) fileNameDisplay.innerText = file.name;
+
     const reader = new FileReader();
     reader.onload = function(e) {
         const data = new Uint8Array(e.target.result);
@@ -286,10 +376,13 @@ document.getElementById('excel-file').addEventListener('change', function(e) {
         });
         if (siswaBaruDitambahkan > 0) Swal.fire({ title: 'Impor Berhasil', html: `Menambahkan <b>${siswaBaruDitambahkan}</b> siswa baru.<br>Data lama tidak digandakan.`, icon: 'success' });
         else Swal.fire({ title: 'Tidak Ada Siswa Baru', html: `Semua NIS sudah ada.<br><b>${siswaDiperbarui}</b> disinkronkan.`, icon: 'info' });
+        
         updateDashboardUI();
         tampilkanMasterTabel(masterSiswaList);
         updateDropdownKelas();
+        
         document.getElementById('excel-file').value = '';
+        if (fileNameDisplay) fileNameDisplay.innerText = "Belum ada file terpilih...";
     };
     reader.readAsArrayBuffer(file);
 });
@@ -307,7 +400,7 @@ function downloadTemplateExcel() {
 }
 
 // ==========================================
-// PRESENSI & LOKASI
+// PRESENSI & PEMBATASAN JAM
 // ==========================================
 function filterDataAbsensi() {
     const kelasTerpilih = document.getElementById('kelas').value;
@@ -334,78 +427,55 @@ function filterDataAbsensi() {
     });
 }
 
-function hitungJarakMeter(lat1, lon1, lat2, lon2) {
-    const R = 6371e3; 
-    const p1 = lat1 * Math.PI/180, p2 = lat2 * Math.PI/180;
-    const deltaP = (lat2-lat1) * Math.PI/180, deltaLon = (lon2-lon1) * Math.PI/180;
-    const a = Math.sin(deltaP/2) * Math.sin(deltaP/2) + Math.cos(p1) * Math.cos(p2) * Math.sin(deltaLon/2) * Math.sin(deltaLon/2);
-    return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
-}
-
-function dapatkanLokasi() {
-    const statusEl = document.getElementById('radius-status');
-    const koorEl = document.getElementById('koordinat-text');
-    const spinner = document.getElementById('loc-spinner');
-    const btnLoc = document.getElementById('btn-cek-lokasi');
-
-    if (!navigator.geolocation) { Swal.fire('Error', 'Browser tidak mendukung GPS.', 'error'); return; }
-
-    statusEl.className = 'loc-status loc-wait';
-    spinner.style.display = 'inline-block';
-    statusEl.innerHTML = spinner.outerHTML + ' Mendapatkan lokasi...';
-    btnLoc.disabled = true;
-
-    navigator.geolocation.getCurrentPosition(
-        (position) => {
-            const userLat = position.coords.latitude;
-            const userLng = position.coords.longitude;
-            userLocationString = `${userLat}, ${userLng} (Akurasi: ${Math.round(position.coords.accuracy)}m)`;
-            koorEl.innerText = `Koordinat: ${userLat.toFixed(6)}, ${userLng.toFixed(6)}`;
-
-            const jarak = hitungJarakMeter(userLat, userLng, SCHOOL_LAT, SCHOOL_LNG);
-
-            if (jarak <= MAX_RADIUS_METERS) {
-                isLocationValid = true;
-                statusEl.className = 'loc-status loc-success';
-                statusEl.innerHTML = `<i class="fa-solid fa-check"></i> Dalam Radius (${jarak} Meter)`;
-                Swal.fire('Lokasi Sesuai', `Anda berada dalam radius sekolah (${jarak} meter). Absensi diizinkan.`, 'success');
-            } else {
-                isLocationValid = false;
-                statusEl.className = 'loc-status loc-error';
-                statusEl.innerHTML = `<i class="fa-solid fa-xmark"></i> Luar Radius (${jarak} Meter)`;
-                Swal.fire('Lokasi Ditolak', `Jarak Anda ${jarak} meter dari sekolah. (Batas maksimal ${MAX_RADIUS_METERS} meter).`, 'error');
-            }
-            btnLoc.disabled = false;
-        },
-        (error) => {
-            isLocationValid = false;
-            statusEl.className = 'loc-status loc-error';
-            statusEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Gagal Mendapatkan Lokasi`;
-            koorEl.innerText = "Koordinat: Error";
-            Swal.fire('Gagal GPS', 'Pastikan GPS menyala dan izin lokasi diberikan.', 'error');
-            btnLoc.disabled = false;
-        }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
-}
-
 function simpanAbsensi() {
     const kelas = document.getElementById('kelas').value;
     const tanggal = document.getElementById('tanggal').value;
     const barisSiswa = document.querySelectorAll('#attendance-table tbody tr');
 
-    if (!kelas || barisSiswa.length === 0 || barisSiswa[0].querySelector('.empty-state')) { Swal.fire('Peringatan', 'Pilih kelas terlebih dahulu!', 'warning'); return; }
-    if (!isLocationValid) { Swal.fire('Akses Ditolak', 'Posisi Anda belum dideteksi atau di luar radius sekolah.', 'error'); return; }
+    if (!kelas || barisSiswa.length === 0 || barisSiswa[0].querySelector('.empty-state')) { 
+        Swal.fire('Peringatan', 'Pilih kelas terlebih dahulu!', 'warning'); 
+        return; 
+    }
+
+    // --- BLOK VALIDASI JAM ABSENSI ---
+    const now = new Date();
+    const currentHours = String(now.getHours()).padStart(2, '0');
+    const currentMinutes = String(now.getMinutes()).padStart(2, '0');
+    const currentTime = `${currentHours}:${currentMinutes}`;
+
+    if (currentTime < WAKTU_MULAI || currentTime > WAKTU_SELESAI) {
+        Swal.fire({
+            title: 'Waktu Absensi Ditolak',
+            text: `Sekarang jam ${currentTime}. Presensi hanya diizinkan antara pukul ${WAKTU_MULAI} sampai ${WAKTU_SELESAI}.`,
+            icon: 'error',
+            confirmButtonColor: '#d33'
+        });
+        return;
+    }
+    // --- AKHIR BLOK VALIDASI JAM ---
 
     let hasilAbsensi = [];
     barisSiswa.forEach((tr, index) => {
-        hasilAbsensi.push({ nis: tr.children[1].innerText, nama: tr.children[2].innerText, status: tr.querySelector(`select[name="status_${index}"]`).value });
+        hasilAbsensi.push({ 
+            nis: tr.children[1].innerText, 
+            nama: tr.children[2].innerText, 
+            status: tr.querySelector(`select[name="status_${index}"]`).value 
+        });
     });
 
-    const payload = { action: "simpan_absensi", kelas, tanggal, koordinat: userLocationString, data: hasilAbsensi };
+    const koordinatTersimpan = SCHOOL_LAT + ", " + SCHOOL_LNG;
+    const payload = { action: "simpan_absensi", kelas, tanggal, koordinat: koordinatTersimpan, data: hasilAbsensi };
     const btn = document.querySelector('#absensi-page .btn-primary');
     const originalText = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan...';
+
+    Swal.fire({
+        title: 'Menyimpan Presensi...',
+        text: 'Mohon tunggu, jangan tutup halaman ini.',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+    });
 
     fetch(URL_WEB_APP, {
         method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -413,12 +483,10 @@ function simpanAbsensi() {
     }).then(res => res.json()).then(response => {
         if (response.result === 'success') {
             Swal.fire('Berhasil!', `Presensi ${kelas} berhasil disimpan.`, 'success');
-            isLocationValid = false;
-            document.getElementById('radius-status').className = 'loc-status loc-wait';
-            document.getElementById('radius-status').innerHTML = 'Menunggu deteksi lokasi...';
-            document.getElementById('koordinat-text').innerText = 'Koordinat: Belum didapatkan';
-            userLocationString = "Lokasi tidak diverifikasi";
-        } else Swal.fire('Gagal!', response.message, 'error');
+            muatLaporanHariIni(true);
+        } else {
+            Swal.fire('Gagal!', response.message, 'error');
+        }
     }).catch(err => Swal.fire('Error', 'Gagal menyimpan.', 'error'))
     .finally(() => { btn.disabled = false; btn.innerHTML = originalText; });
 }
@@ -426,15 +494,29 @@ function simpanAbsensi() {
 // ==========================================
 // REKAP & LAPORAN HARIAN
 // ==========================================
-function muatLaporanHariIni() {
-    document.getElementById('today-summary-container').innerHTML = `<div class="empty-state" style="padding: 20px;"><i class="fa-solid fa-spinner fa-spin"></i></div>`;
+function muatLaporanHariIni(isSilent = false) {
+    if (!isSilent) {
+        document.getElementById('today-summary-container').innerHTML = `<div class="empty-state" style="padding: 20px;"><i class="fa-solid fa-spinner fa-spin"></i></div>`;
+    }
+
     fetch(URL_WEB_APP, {
-        method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        method: 'POST', 
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ action: "get_today_summary", tanggal: document.getElementById('tanggal').value })
-    }).then(res => res.json()).then(response => {
-        if (response.result === 'success') renderLaporanHariIni(response.data);
-        else document.getElementById('today-summary-container').innerHTML = `<div class="empty-state"><p style="color:var(--danger)">Gagal memuat.</p></div>`;
-    }).catch(err => document.getElementById('today-summary-container').innerHTML = `<div class="empty-state"><p style="color:var(--danger)">Koneksi bermasalah.</p></div>`);
+    })
+    .then(res => res.json())
+    .then(response => {
+        if (response.result === 'success') {
+            renderLaporanHariIni(response.data);
+        } else if (!isSilent) {
+            document.getElementById('today-summary-container').innerHTML = `<div class="empty-state"><p style="color:var(--danger)">Gagal memuat laporan.</p></div>`;
+        }
+    })
+    .catch(err => {
+        if (!isSilent) {
+            document.getElementById('today-summary-container').innerHTML = `<div class="empty-state"><p style="color:var(--danger)">Koneksi bermasalah.</p></div>`;
+        }
+    });
 }
 
 function renderLaporanHariIni(dataSummary) {
@@ -498,7 +580,7 @@ function olahDanTampilkanRekap(kelasSelected, rawData) {
         return { nis: s.nis, nama: s.nama, kelas: kelasSelected, hadir, sakit, izin, alpa, totalPertemuan: total, persentase: total > 0 ? Math.round((hadir/total)*100) : 0 };
     });
 
-    if (rawData.length === 0) { tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><p>Belum ada presensi pada periode ini.</p></div></td></tr>`; return; }
+    if (rawData.length === 0) { tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><i class="fa-solid fa-calendar-xmark"></i><p>Belum ada rekaman presensi pada periode ini.</p></div></td></tr>`; return; }
 
     rekapSiswaHasil.forEach((item, idx) => {
         tbody.innerHTML += `<tr><td><strong>${idx + 1}</strong></td><td><code>${item.nis}</code></td><td><strong>${item.nama}</strong></td>
@@ -589,13 +671,67 @@ function exportRekapExcel() {
 }
 
 function resetDatabase() {
-    Swal.fire({ title: 'PERINGATAN!', text: "HAPUS SELURUH DATA?", icon: 'warning', showCancelButton: true, confirmButtonText: 'Hapus!' }).then((res1) => {
-        if (res1.isConfirmed) {
-            Swal.fire({ title: 'Yakin?', text: "Semua akan hilang.", icon: 'error', showCancelButton: true, confirmButtonText: 'Yakin!' }).then((res2) => {
-                if (res2.isConfirmed) {
-                    fetch(URL_WEB_APP, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: "reset_database" }) })
-                    .then(res => res.json()).then(r => {
-                        if (r.result === 'success') { Swal.fire('Dihapus!', 'Data bersih.', 'success'); masterSiswaList = []; updateDashboardUI(); tampilkanMasterTabel([]); }
+    Swal.fire({
+        title: 'PERINGATAN KRITIS!',
+        text: "Apakah Anda yakin ingin MENGHAPUS SELURUH DATA (Master Siswa & Presensi) dari database Google Sheets? Tindakan ini TIDAK BISA dibatalkan!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Ya, Hapus Semua!',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({
+                title: 'Apakah Anda benar-benar yakin?',
+                text: "Semua riwayat absensi akan hilang selamanya.",
+                icon: 'error',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Yakin 100% Hapus!',
+                cancelButtonText: 'Batal'
+            }).then((result2) => {
+                if (result2.isConfirmed) {
+                    const btn = document.querySelector('.btn-danger');
+                    const originalText = btn.innerHTML;
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menghapus...';
+
+                    Swal.fire({
+                        title: 'Menghapus Database...',
+                        text: 'Mohon tunggu, jangan tutup halaman ini.',
+                        allowOutsideClick: false,
+                        didOpen: () => { Swal.showLoading(); }
+                    });
+
+                    fetch(URL_WEB_APP, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify({ action: "reset_database" })
+                    })
+                    .then(res => res.json())
+                    .then(response => {
+                        if (response.result === 'success') {
+                            Swal.fire('Berhasil Dihapus!', 'Seluruh data database telah dihapus bersih.', 'success');
+                            masterSiswaList = [];
+                            updateDashboardUI();
+                            tampilkanMasterTabel([]);
+                            updateDropdownKelas();
+                            document.getElementById('today-summary-container').innerHTML = '<div class="empty-state"><p>Belum ada data laporan hari ini.</p></div>';
+                            document.querySelector('#master-table tbody').innerHTML = `<tr><td colspan="5"><div class="empty-state"><i class="fa-solid fa-file-excel"></i><p>Database kosong. Silakan upload file Excel baru.</p></div></td></tr>`;
+                            document.getElementById('db-status-info').innerText = "Database kosong. Silakan upload file Excel baru.";
+                        } else {
+                            Swal.fire('Gagal!', "GAGAL menghapus data: " + response.message, 'error');
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        Swal.fire('Error Jaringan', "Terjadi kesalahan jaringan saat mencoba menghapus data.", 'error');
+                    })
+                    .finally(() => {
+                        btn.disabled = false;
+                        btn.innerHTML = originalText;
                     });
                 }
             });

@@ -1,11 +1,7 @@
 function doPost(e) {
-  // ====================================================
-  // INISIALISASI LOCK SERVICE (ANTI TABRAKAN DATA)
-  // ====================================================
   var lock = LockService.getScriptLock();
   
   try {
-    // Tunggu maksimal 10 detik jika ada proses lain yang sedang berjalan
     lock.waitLock(10000);
 
     var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -13,7 +9,7 @@ function doPost(e) {
     var action = contents.action;
 
     // ====================================================
-    // 1. SIMPAN MASTER DATA SISWA (Termasuk Kolom JK)
+    // 1. SIMPAN MASTER DATA SISWA
     // ====================================================
     if (action === "simpan_master") {
       var dataSiswa = contents.data;
@@ -50,7 +46,7 @@ function doPost(e) {
 
     } 
     // ====================================================
-    // 2. TARIK/SEDOT MASTER DATA SISWA (Termasuk Kolom JK)
+    // 2. TARIK/SEDOT MASTER DATA SISWA
     // ====================================================
     else if (action === "get_master") {
       var sheets = ss.getSheets();
@@ -59,7 +55,8 @@ function doPost(e) {
       for (var s = 0; s < sheets.length; s++) {
         var sheetName = sheets[s].getName();
         
-        if (!sheetName.startsWith("Absensi_")) {
+        // Jangan ambil data dari sheet Absensi dan Pengaturan
+        if (!sheetName.startsWith("Absensi_") && sheetName !== "Pengaturan") {
           var values = sheets[s].getDataRange().getValues();
           for (var r = 1; r < values.length; r++) {
             if (values[r][1] && values[r][2]) { 
@@ -78,10 +75,8 @@ function doPost(e) {
         JSON.stringify({ result: "success", data: allSiswa })
       ).setMimeType(ContentService.MimeType.JSON);
     }
-
-
-// ====================================================
-    // 3. SIMPAN PRESENSI HARIAN (Dengan Validasi Anti-Double & Lokasi)
+    // ====================================================
+    // 3. SIMPAN PRESENSI HARIAN 
     // ====================================================
     else if (action === "simpan_absensi") {
       var kelas = contents.kelas;
@@ -95,7 +90,6 @@ function doPost(e) {
       
       if (!sheetAbsensi) {
         sheetAbsensi = ss.insertSheet(sheetAbsensiName);
-        // Tambahan Kolom "Koordinat Lokasi" di ujung kanan
         sheetAbsensi.appendRow(["Timestamp", "Tanggal", "Kelas", "NIS", "Nama", "Status Kehadiran", "Koordinat Lokasi"]);
       } else {
         var existingData = sheetAbsensi.getDataRange().getValues();
@@ -132,7 +126,7 @@ function doPost(e) {
           dataAbsensi[m].nis,
           dataAbsensi[m].nama,
           dataAbsensi[m].status,
-          kordinatInfo // Menyimpan titik kordinat saat absensi dikirim
+          kordinatInfo 
         ]);
       }
 
@@ -147,7 +141,6 @@ function doPost(e) {
       ).setMimeType(ContentService.MimeType.JSON);
 
     }
-
     // ====================================================
     // 4. AMBIL REKAP DATA ABSENSI
     // ====================================================
@@ -249,16 +242,68 @@ function doPost(e) {
       ).setMimeType(ContentService.MimeType.JSON);
     }
     // ====================================================
-    // 7. RESET SELURUH DATABASE
+    // 6. SIMPAN PENGATURAN KE DATABASE (DITAMBAH JAM)
+    // ====================================================
+    else if (action === "simpan_pengaturan") {
+      var sheetPengaturan = ss.getSheetByName("Pengaturan");
+      if (!sheetPengaturan) {
+        sheetPengaturan = ss.insertSheet("Pengaturan");
+      }
+      
+      sheetPengaturan.clearContents();
+      sheetPengaturan.appendRow(["LATITUDE", "LONGITUDE", "RADIUS_METER", "WAKTU_MULAI", "WAKTU_SELESAI"]);
+      sheetPengaturan.appendRow([contents.lat, contents.lng, contents.radius, contents.waktu_mulai, contents.waktu_selesai]);
+
+      return ContentService.createTextOutput(
+        JSON.stringify({ result: "success", message: "Pengaturan berhasil disimpan di database!" })
+      ).setMimeType(ContentService.MimeType.JSON);
+    }
+
+
+// ====================================================
+    // 7. AMBIL PENGATURAN LOKASI DARI DATABASE (DITAMBAH JAM)
+    // ====================================================
+    else if (action === "get_pengaturan") {
+      var sheetPengaturan = ss.getSheetByName("Pengaturan");
+      var config = { lat: -6.200000, lng: 106.816666, radius: 50, waktu_mulai: "00:00", waktu_selesai: "23:59" }; 
+
+      if (sheetPengaturan) {
+        // PERBAIKAN: Gunakan getDisplayValues() agar ditarik sebagai teks murni (HH:MM)
+        var data = sheetPengaturan.getDataRange().getDisplayValues();
+        if (data.length > 1) {
+          config.lat = parseFloat(data[1][0]);
+          config.lng = parseFloat(data[1][1]);
+          config.radius = parseInt(data[1][2]);
+          
+          // Potong ambil 5 karakter pertama (HH:MM) untuk mencegah error detik (HH:MM:SS)
+          var wMulai = String(data[1][3] || "00:00");
+          var wSelesai = String(data[1][4] || "23:59");
+          config.waktu_mulai = wMulai.substring(0, 5);
+          config.waktu_selesai = wSelesai.substring(0, 5);
+        }
+      }
+      
+      return ContentService.createTextOutput(
+        JSON.stringify({ result: "success", data: config })
+      ).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // ====================================================
+    // 8. RESET SELURUH DATABASE
     // ====================================================
     else if (action === "reset_database") {
       var allSheets = ss.getSheets();
-      for (var n = 1; n < allSheets.length; n++) {
-        ss.deleteSheet(allSheets[n]);
+      
+      var sheet1 = ss.getSheetByName("Sheet1");
+      if (!sheet1) sheet1 = ss.insertSheet("Sheet1");
+      sheet1.clear();
+
+      for (var n = 0; n < allSheets.length; n++) {
+        var shName = allSheets[n].getName();
+        if (shName !== "Sheet1" && shName !== "Pengaturan") {
+          ss.deleteSheet(allSheets[n]);
+        }
       }
-      var firstSheet = allSheets[0];
-      firstSheet.clear();
-      firstSheet.setName("Sheet1");
 
       return ContentService.createTextOutput(
         JSON.stringify({ result: "success", message: "Database berhasil direset total!" })
@@ -271,16 +316,10 @@ function doPost(e) {
     ).setMimeType(ContentService.MimeType.JSON);
     
   } finally {
-    // ====================================================
-    // LEPASKAN KUNCI (WAJIB ADA)
-    // ====================================================
     lock.releaseLock();
   }
 }
 
-// ====================================================
-// 8. PENANGANAN GET REQUEST (Pencegah Error saat diakses dari Browser)
-// ====================================================
 function doGet(e) {
   return ContentService.createTextOutput("Endpoint EduAbsensi Aktif. Akses data hanya menggunakan POST request.");
 }
