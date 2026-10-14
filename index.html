@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="id">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,25 +15,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="EduAbsensi">
     <link rel="apple-touch-icon" href="asset/logoapp.png">
-
-    <!-- Favicon -->
     <link rel="icon" type="image/png" href="asset/favicon.png">
-
-    <!-- Deskripsi Standar Web -->
-    <meta name="description" content="Sistem Informasi Presensi Harian Siswa & Santri berbasis web online. Kelola absensi sekolah dengan mudah, cepat, dan terintegrasi secara realtime.">
-
-    <!-- Meta Tags Open Graph (WhatsApp, Facebook, Telegram, dll) -->
-    <meta property="og:type" content="website">
-    <meta property="og:title" content="EduAbsensi - Sistem Presensi Online Sekolah & Madrasah">
-    <meta property="og:description" content="Aplikasi presensi harian siswa dan santri. Rekapitulasi absensi otomatis, praktis, dan akurat.">
-    <meta property="og:image" content="https://moljeh.github.io/absensi/asset/logoweb.png">
-
-    <!-- Meta Tags Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="EduAbsensi - Sistem Presensi Online Sekolah & Madrasah">
-    <meta name="twitter:description" content="Aplikasi presensi harian siswa dan santri. Rekapitulasi absensi otomatis, praktis, dan akurat.">
-    <meta name="twitter:image" content="https://moljeh.github.io/absensi/asset/logoweb.png">
-
+    <meta name="description" content="Sistem Informasi Presensi Harian Siswa & Santri berbasis web online.">
+    
     <!-- Google Fonts & FontAwesome -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -42,40 +25,40 @@
     <!-- External CSS & JS -->
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 
 <body>
-
     <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
 
-<aside class="sidebar" id="sidebar">
-    <!-- Tombol Close (Pojok Kanan Atas) -->
-    <button class="close-sidebar-btn" onclick="toggleSidebar()">
-        <i class="fa-solid fa-xmark"></i>
-    </button>
+    <aside class="sidebar" id="sidebar">
+        <button class="close-sidebar-btn" onclick="toggleSidebar()">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
 
-    <!-- Logo & Nama Sekolah -->
-    <div class="sidebar-brand">
-        <img src="asset/logoweb.png" alt="Logo Sekolah" class="school-logo">
-        <h2 class="school-name">SD NEGERI 1 INDONESIA</h2>
-    </div>
+        <div class="sidebar-brand">
+            <img src="asset/logoweb.png" alt="Logo Sekolah" class="school-logo">
+            <h2 class="school-name">SD NEGERI 1 INDONESIA</h2>
+        </div>
 
-    <!-- Menu Navigasi -->
-    <ul class="nav-menu">
-        <li class="active" onclick="switchTab('dashboard-page', this)">
-            <i class="fa-solid fa-chart-pie"></i> Dashboard
-        </li>
-        <li onclick="switchTab('master-page', this)">
-            <i class="fa-solid fa-user-gear"></i> Master Data Siswa
-        </li>
-        <li onclick="switchTab('absensi-page', this)">
-            <i class="fa-solid fa-clipboard-user"></i> Isi Absensi
-        </li>
-        <li onclick="switchTab('rekap-page', this)">
-            <i class="fa-solid fa-folder-open"></i> Rekap Data
-        </li>
-    </ul>
-</aside>
+        <ul class="nav-menu">
+            <li class="active" onclick="switchTab('dashboard-page', this)">
+                <i class="fa-solid fa-chart-pie"></i> Dashboard
+            </li>
+            <li onclick="switchTab('master-page', this)">
+                <i class="fa-solid fa-user-gear"></i> Master Data Siswa
+            </li>
+            <li onclick="switchTab('absensi-page', this)">
+                <i class="fa-solid fa-clipboard-user"></i> Isi Absensi
+            </li>
+            <li onclick="switchTab('rekap-page', this)">
+                <i class="fa-solid fa-folder-open"></i> Rekap Data
+            </li>
+            <li onclick="switchTab('pengaturan-page', this)">
+                <i class="fa-solid fa-map-location-dot"></i> Pengaturan Lokasi
+            </li>
+        </ul>
+    </aside>
 
     <div class="main-wrapper">
         <header class="topbar">
@@ -127,7 +110,6 @@
                     </div>
                 </div>
 
-                <!-- DYNAMIC CLASS CARDS -->
                 <div class="panel">
                     <div class="panel-header">
                         <h3><i class="fa-solid fa-layer-group" style="color: var(--primary);"></i> Rincian Jumlah Siswa Per Kelas</h3>
@@ -137,7 +119,7 @@
                     </div>
                 </div>
 
-              <div class="panel">
+                <div class="panel">
                     <div class="panel-header">
                         <h3><i class="fa-solid fa-clipboard-check" style="color: var(--success);"></i> Laporan Presensi Hari Ini</h3>
                         <button class="btn-template" onclick="muatLaporanHariIni()" style="padding: 6px 12px; font-size: 0.75rem;"><i class="fa-solid fa-rotate"></i> Refresh Data</button>
@@ -166,6 +148,8 @@
                         </div>
                     </div>
 
+                    <div id="db-status-info" style="margin-bottom: 15px; font-size: 0.9rem; font-weight: 500;"></div>
+
                     <div class="table-responsive">
                         <table id="master-table">
                             <thead>
@@ -183,7 +167,14 @@
                         </table>
                     </div>
 
-                    <button class="btn-primary" onclick="simpanMasterSiswa()"><i class="fa-solid fa-database"></i> Simpan Master Data Ke Database</button>
+                    <div class="button-group">
+                        <button class="btn-primary" onclick="simpanMasterSiswa()">
+                            <i class="fa-solid fa-database"></i> Simpan Master Data Ke Database
+                        </button>
+                        <button class="btn-danger" onclick="resetDatabase()">
+                            <i class="fa-solid fa-triangle-exclamation"></i> Reset Seluruh Database
+                        </button>
+                    </div>
                 </div>
             </section>
 
@@ -201,11 +192,27 @@
                                 <option value="">-- Memuat Kelas... --</option>
                             </select>
                         </div>
-
                         <div class="form-group">
                             <label for="tanggal">Tanggal Presensi</label>
                             <input type="date" id="tanggal" class="form-control">
                         </div>
+                    </div>
+
+                    <div class="location-panel">
+                        <div class="location-info">
+                            <i class="fa-solid fa-map-location-dot location-icon"></i>
+                            <div class="location-text">
+                                <h4>Verifikasi Titik Lokasi Absensi</h4>
+                                <p id="koordinat-text">Koordinat: Belum didapatkan</p>
+                                <span id="radius-status" class="loc-status loc-wait">
+                                    <i class="fa-solid fa-circle-notch fa-spin" style="display:none;" id="loc-spinner"></i>
+                                    Menunggu deteksi lokasi...
+                                </span>
+                            </div>
+                        </div>
+                        <button class="btn-location" id="btn-cek-lokasi" onclick="dapatkanLokasi()">
+                            <i class="fa-solid fa-location-crosshairs"></i> Deteksi Lokasi Saya
+                        </button>
                     </div>
 
                     <div class="table-responsive">
@@ -231,9 +238,16 @@
             <!-- SECTION 4: REKAP DATA -->
             <section id="rekap-page" class="page-section">
                 <div class="panel">
-                    <div class="panel-header">
+                   <div class="panel-header">
                         <h3>Rekapitulasi Presensi Siswa / Santri</h3>
-                        <button class="btn-template" onclick="exportRekapExcel()"><i class="fa-solid fa-file-excel"></i> Export Rekap Excel</button>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button class="btn-template" onclick="cetakRekap()" style="background-color: #3b82f6;">
+                                <i class="fa-solid fa-print"></i> Cetak PDF / Print
+                            </button>
+                            <button class="btn-template" onclick="exportRekapExcel()">
+                                <i class="fa-solid fa-file-excel"></i> Export Rekap Excel
+                            </button>
+                        </div>
                     </div>
 
                     <div class="controls-grid">
@@ -243,7 +257,6 @@
                                 <option value="">-- Memuat Kelas... --</option>
                             </select>
                         </div>
-
                         <div class="form-group">
                             <label for="rekap-bulan">Pilih Bulan</label>
                             <select id="rekap-bulan" class="form-control">
@@ -262,7 +275,6 @@
                                 <option value="12">Desember</option>
                             </select>
                         </div>
-
                         <div class="form-group">
                             <label for="rekap-tahun">Pilih Tahun</label>
                             <select id="rekap-tahun" class="form-control">
@@ -299,13 +311,50 @@
                 </div>
             </section>
 
+            <!-- SECTION 5: PENGATURAN -->
+            <section id="pengaturan-page" class="page-section">
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3><i class="fa-solid fa-gear" style="color: var(--primary);"></i> Pengaturan Lokasi & Radius Absensi</h3>
+                    </div>
+                    
+                    <div style="background: var(--info-bg); border-left: 4px solid var(--info); padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 0.88rem; color: #1e40af; line-height: 1.5;">
+                        <strong>Petunjuk Penggunaan:</strong><br>
+                        Tentukan titik kordinat (Garis Lintang & Bujur) sekolah Anda agar absensi berbasis lokasi (GPS) akurat. Anda dapat mengisi manual atau klik tombol biru <b>"Gunakan Lokasi Saat Ini"</b>.
+                    </div>
+
+                    <div class="controls-grid">
+                        <div class="form-group">
+                            <label for="set-lat">Latitude (Garis Lintang)</label>
+                            <input type="number" step="any" id="set-lat" class="form-control" placeholder="-6.200000">
+                        </div>
+                        <div class="form-group">
+                            <label for="set-lng">Longitude (Garis Bujur)</label>
+                            <input type="number" step="any" id="set-lng" class="form-control" placeholder="106.816666">
+                        </div>
+                        <div class="form-group">
+                            <label for="set-radius">Batas Radius Maksimal (Meter)</label>
+                            <input type="number" id="set-radius" class="form-control" placeholder="50">
+                        </div>
+                    </div>
+
+                    <div class="button-group" style="margin-top: 15px;">
+                        <button class="btn-location" onclick="autoFillLokasiSekolah()" style="flex: 1; padding: 12px; justify-content: center;">
+                            <i class="fa-solid fa-location-crosshairs"></i> Gunakan Lokasi Saat Ini
+                        </button>
+                        <button class="btn-primary" onclick="simpanPengaturanLokasi()" style="flex: 1;">
+                            <i class="fa-solid fa-floppy-disk"></i> Simpan Pengaturan
+                        </button>
+                    </div>
+                </div>
+            </section>
+
         </main>
     </div>
 	
 	<!-- PWA Install Banner -->
     <div id="pwa-install-banner" class="pwa-banner">
         <div class="pwa-banner-content">
-            <!-- Pastikan path gambar sesuai dengan folder Anda -->
             <img src="asset/logoweb.png" alt="App Logo" class="pwa-logo">
             <div class="pwa-text">
                 <h4>Install EduAbsensi</h4>
@@ -318,10 +367,9 @@
         </div>
     </div>
 	
+	<!-- AREA KHUSUS PRINT LAPORAN -->
+    <div id="print-area"></div>
 	
-	
-
-    <!-- External JavaScript -->
     <script src="script.js"></script>
 </body>
 </html>
