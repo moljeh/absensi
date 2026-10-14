@@ -9,9 +9,41 @@ function doPost(e) {
     var action = contents.action;
 
     // ====================================================
+    // 0. SISTEM LOGIN ADMINISTRATOR
+    // ====================================================
+    if (action === "login") {
+      var sheetLogin = ss.getSheetByName("Login");
+      
+      // Buat sheet Login otomatis dengan akun default jika belum ada
+      if (!sheetLogin) {
+        sheetLogin = ss.insertSheet("Login");
+        sheetLogin.appendRow(["USERNAME", "PASSWORD"]);
+        sheetLogin.appendRow(["admin", "admin123"]); 
+      }
+      
+      var data = sheetLogin.getDataRange().getValues();
+      var inputUser = contents.username;
+      var inputPass = contents.password;
+      var isMatch = false;
+      
+      for (var i = 1; i < data.length; i++) {
+        // Cek kecocokan username dan password
+        if (data[i][0] == inputUser && data[i][1] == inputPass) {
+          isMatch = true;
+          break;
+        }
+      }
+      
+      if (isMatch) {
+        return ContentService.createTextOutput(JSON.stringify({ result: "success", message: "Login Berhasil" })).setMimeType(ContentService.MimeType.JSON);
+      } else {
+        return ContentService.createTextOutput(JSON.stringify({ result: "error", message: "Username atau Password salah!" })).setMimeType(ContentService.MimeType.JSON);
+      }
+    }
+    // ====================================================
     // 1. SIMPAN MASTER DATA SISWA
     // ====================================================
-    if (action === "simpan_master") {
+    else if (action === "simpan_master") {
       var dataSiswa = contents.data;
       var kelasMap = {};
       
@@ -55,8 +87,8 @@ function doPost(e) {
       for (var s = 0; s < sheets.length; s++) {
         var sheetName = sheets[s].getName();
         
-        // Jangan ambil data dari sheet Absensi dan Pengaturan
-        if (!sheetName.startsWith("Absensi_") && sheetName !== "Pengaturan") {
+        // Jangan ambil data dari sheet sistem (Absensi, Pengaturan, Login)
+        if (!sheetName.startsWith("Absensi_") && sheetName !== "Pengaturan" && sheetName !== "Login") {
           var values = sheets[s].getDataRange().getValues();
           for (var r = 1; r < values.length; r++) {
             if (values[r][1] && values[r][2]) { 
@@ -197,7 +229,7 @@ function doPost(e) {
       ).setMimeType(ContentService.MimeType.JSON);
     }
     // ====================================================
-    // 5. AMBIL LAPORAN PRESENSI HARI INI SEMUA KELAS
+    // 5. AMBIL LAPORAN PRESENSI HARI INI
     // ====================================================
     else if (action === "get_today_summary") {
       var todayStr = contents.tanggal;
@@ -242,7 +274,7 @@ function doPost(e) {
       ).setMimeType(ContentService.MimeType.JSON);
     }
     // ====================================================
-    // 6. SIMPAN PENGATURAN KE DATABASE (DITAMBAH JAM)
+    // 6. SIMPAN PENGATURAN KE DATABASE
     // ====================================================
     else if (action === "simpan_pengaturan") {
       var sheetPengaturan = ss.getSheetByName("Pengaturan");
@@ -268,16 +300,18 @@ function doPost(e) {
       var config = { lat: -6.200000, lng: 106.816666, radius: 50, waktu_mulai: "00:00", waktu_selesai: "23:59" }; 
 
       if (sheetPengaturan) {
-        // PERBAIKAN: Gunakan getDisplayValues() agar ditarik sebagai teks murni (HH:MM)
-        var data = sheetPengaturan.getDataRange().getDisplayValues();
-        if (data.length > 1) {
-          config.lat = parseFloat(data[1][0]);
-          config.lng = parseFloat(data[1][1]);
-          config.radius = parseInt(data[1][2]);
+        var dataTampilan = sheetPengaturan.getDataRange().getDisplayValues(); // Untuk teks Jam
+        var dataAsli = sheetPengaturan.getDataRange().getValues(); // Untuk angka Koordinat (Desimal Asli)
+        
+        if (dataAsli.length > 1) {
+          // Tarik koordinat dari data asli agar desimal tidak terpotong koma
+          config.lat = parseFloat(dataAsli[1][0]);
+          config.lng = parseFloat(dataAsli[1][1]);
+          config.radius = parseInt(dataAsli[1][2]);
           
-          // Potong ambil 5 karakter pertama (HH:MM) untuk mencegah error detik (HH:MM:SS)
-          var wMulai = String(data[1][3] || "00:00");
-          var wSelesai = String(data[1][4] || "23:59");
+          // Tarik jam dari data tampilan agar format (HH:MM) tidak berubah menjadi tanggal
+          var wMulai = String(dataTampilan[1][3] || "00:00");
+          var wSelesai = String(dataTampilan[1][4] || "23:59");
           config.waktu_mulai = wMulai.substring(0, 5);
           config.waktu_selesai = wSelesai.substring(0, 5);
         }
@@ -300,7 +334,8 @@ function doPost(e) {
 
       for (var n = 0; n < allSheets.length; n++) {
         var shName = allSheets[n].getName();
-        if (shName !== "Sheet1" && shName !== "Pengaturan") {
+        // Lindungi Sheet Login dari penghapusan reset database
+        if (shName !== "Sheet1" && shName !== "Pengaturan" && shName !== "Login") {
           ss.deleteSheet(allSheets[n]);
         }
       }

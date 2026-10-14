@@ -1,8 +1,5 @@
-const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbzJtdR7g9fa3g_YLdO6eX_9dOXjeB7wyrSlbZX9uZDNWRVP1f28_-r9xLqFdhozAeS0ew/exec";
+const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbyhv5E8MY80vWNBbPJtKHUy40H3rnp4T_7dqWri5BUqS3JG5zPp7sN5jyPURE_43hri/exec";
 
-// ==========================================
-// VARIABEL PENGATURAN (Dinamis dari Database)
-// ==========================================
 let SCHOOL_LAT = -6.200000; 
 let SCHOOL_LNG = 106.816666;
 let MAX_RADIUS_METERS = 50; 
@@ -21,7 +18,101 @@ const month = String(today.getMonth() + 1).padStart(2, '0');
 const day = String(today.getDate()).padStart(2, '0');
 document.getElementById('tanggal').value = `${year}-${month}-${day}`;
 
+// ==========================================
+// PENANGANAN STATUS LOGIN (SESSION)
+// ==========================================
 document.addEventListener('DOMContentLoaded', function() {
+    // Mengecek apakah sudah login di sesi browser ini
+    if (!sessionStorage.getItem('adminLoggedIn')) {
+        document.getElementById('login-wrapper').style.display = 'flex';
+    } else {
+        document.getElementById('login-wrapper').style.display = 'none';
+        inisialisasiAplikasiAdmin();
+    }
+});
+
+function prosesLogin() {
+    // 1. CEK KONEKSI INTERNET DULU
+    if (!navigator.onLine) {
+        Swal.fire('Tidak Ada Internet', 'Pastikan komputer atau perangkat Anda terhubung ke WiFi atau jaringan seluler.', 'error');
+        return;
+    }
+
+    const user = document.getElementById('login-username').value;
+    const pass = document.getElementById('login-password').value;
+    
+    if (!user || !pass) {
+        Swal.fire('Peringatan', 'Username dan Password wajib diisi!', 'warning');
+        return;
+    }
+
+    const btn = document.getElementById('btn-login');
+    const origText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memeriksa...';
+
+    fetch(URL_WEB_APP, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: "login", username: user, password: pass })
+    })
+    .then(res => res.json())
+
+.then(response => {
+        if (response.result === 'success') {
+            sessionStorage.setItem('adminLoggedIn', 'true');
+            document.getElementById('login-wrapper').style.display = 'none';
+            Swal.fire({ title: 'Berhasil', text: 'Selamat datang di Panel Admin', icon: 'success', timer: 1500, showConfirmButton: false });
+            inisialisasiAplikasiAdmin();
+} else {
+            // PAKSA LEPAS FOKUS SECARA SPESIFIK
+            document.getElementById('login-username').blur();
+            document.getElementById('login-password').blur();
+            document.getElementById('btn-login').blur();
+            
+            // 2. NOTIF JIKA USERNAME/PASSWORD SALAH
+            Swal.fire({
+                title: 'Gagal Login',
+                text: 'Username atau Password yang Anda masukkan tidak cocok dengan database!',
+                icon: 'error',
+                returnFocus: false, // Mencegah SweetAlert berebut fokus
+                didClose: () => {
+                    // didClose menjamin baris ini HANYA dieksekusi 
+                    // SETELAH pop-up hilang 100% dari layar
+                    document.getElementById('login-password').value = '';
+                    document.getElementById('login-password').focus();
+                }
+            });
+        }
+    })
+
+    .catch(err => {
+        // 3. JIKA KONEKSI TERPUTUS SAAT LOADING / SERVER GAGAL
+        Swal.fire('Koneksi Terputus', 'Gagal menghubungi server database Google Sheets. Periksa stabilitas internet Anda.', 'error');
+    })
+    .finally(() => { 
+        btn.disabled = false; 
+        btn.innerHTML = origText; 
+    });
+}
+
+function logoutAdmin() {
+    Swal.fire({
+        title: 'Keluar?',
+        text: "Sesi Anda akan diakhiri dan akan kembali ke layar login.",
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Keluar',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            sessionStorage.removeItem('adminLoggedIn');
+            location.reload(); // Refresh halaman akan otomatis kembali ke form login
+        }
+    });
+}
+
+function inisialisasiAplikasiAdmin() {
     muatPengaturanLokasi(); 
     muatMasterDataDariDatabase();
     muatLaporanHariIni(); 
@@ -32,7 +123,8 @@ document.addEventListener('DOMContentLoaded', function() {
             muatLaporanHariIni(true); 
         }
     }, 60000);
-});
+}
+
 
 // ==========================================
 // KONTROL NAVIGASI MENU & AKORDEON
@@ -418,8 +510,8 @@ function filterDataAbsensi() {
     siswaKelas.forEach((siswa, index) => {
         const tr = document.createElement('tr');
         tr.onclick = function() { document.querySelectorAll('#attendance-table tbody tr').forEach(r => r.classList.remove('selected-row')); tr.classList.add('selected-row'); };
-        tr.innerHTML = `<td><strong>${index + 1}</strong></td><td><code>${siswa.nis}</code></td><td><strong>${siswa.nama}</strong></td>
-            <td><select class="status-select" name="status_${index}" onfocus="this.closest('tr').click()">
+      tr.innerHTML = `<td><strong>${index + 1}</strong></td><td><code>${siswa.nis}</code></td><td><strong>${siswa.nama}</strong></td>
+            <td><select class="status-select status-hadir" name="status_${index}" onfocus="this.closest('tr').click()" onchange="updateWarnaStatus(this)">
                 <option value="Hadir" selected>Hadir</option><option value="Sakit">Sakit</option>
                 <option value="Izin">Izin</option><option value="Alpa">Alpa</option>
             </select></td>`;
@@ -437,7 +529,6 @@ function simpanAbsensi() {
         return; 
     }
 
-    // --- BLOK VALIDASI JAM ABSENSI ---
     const now = new Date();
     const currentHours = String(now.getHours()).padStart(2, '0');
     const currentMinutes = String(now.getMinutes()).padStart(2, '0');
@@ -452,7 +543,6 @@ function simpanAbsensi() {
         });
         return;
     }
-    // --- AKHIR BLOK VALIDASI JAM ---
 
     let hasilAbsensi = [];
     barisSiswa.forEach((tr, index) => {
@@ -748,3 +838,41 @@ window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); defe
 document.getElementById('btn-install-pwa')?.addEventListener('click', async () => { if (pwaBanner) pwaBanner.classList.remove('show'); if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt = null; } });
 document.getElementById('btn-close-pwa')?.addEventListener('click', () => { if (pwaBanner) pwaBanner.classList.remove('show'); });
 window.addEventListener('appinstalled', () => { if (pwaBanner) pwaBanner.classList.remove('show'); });
+
+// ==========================================
+// FUNGSI SHOW / HIDE PASSWORD
+// ==========================================
+function togglePasswordVisibility() {
+    const passwordInput = document.getElementById('login-password');
+    const toggleIcon = document.getElementById('toggle-password');
+
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text'; // Tampilkan password
+        toggleIcon.classList.remove('fa-eye');
+        toggleIcon.classList.add('fa-eye-slash'); // Ganti ke ikon mata dicoret
+    } else {
+        passwordInput.type = 'password'; // Sembunyikan password
+        toggleIcon.classList.remove('fa-eye-slash');
+        toggleIcon.classList.add('fa-eye'); // Ganti ke ikon mata normal
+    }
+}
+
+// ==========================================
+// FUNGSI UPDATE WARNA DROPDOWN STATUS
+// ==========================================
+function updateWarnaStatus(selectElement) {
+    // Hapus semua warna sebelumnya
+    selectElement.classList.remove('status-hadir', 'status-sakit', 'status-izin', 'status-alpa');
+    
+    // Tambahkan warna baru sesuai pilihan
+    const value = selectElement.value;
+    if (value === 'Hadir') {
+        selectElement.classList.add('status-hadir');
+    } else if (value === 'Sakit') {
+        selectElement.classList.add('status-sakit');
+    } else if (value === 'Izin') {
+        selectElement.classList.add('status-izin');
+    } else if (value === 'Alpa') {
+        selectElement.classList.add('status-alpa');
+    }
+}

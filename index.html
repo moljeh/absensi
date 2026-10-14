@@ -5,18 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Admin - Presensi Sekolah & Madrasah</title>
 
+    <!-- Meta Tags Khusus WhatsApp & Media Sosial -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="EduAbsensi - Dashboard Administrator">
+    <meta property="og:description" content="Portal manajemen data siswa, pengaturan batas jam & lokasi absensi, serta rekapitulasi presensi harian sekolah secara terintegrasi.">
+    <meta property="og:image" content="https://moljeh.github.io/absensi/asset/logoweb.png">
+    <meta property="og:url" content="https://moljeh.github.io/absensi/">
+
     <!-- PWA Settings -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#4f46e5">
     <meta name="mobile-web-app-capable" content="yes">
-    
-    <!-- iOS / Apple PWA Support -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="EduAbsensi">
     <link rel="apple-touch-icon" href="asset/logoapp.png">
     <link rel="icon" type="image/png" href="asset/favicon.png">
-    <meta name="description" content="Sistem Informasi Presensi Harian Siswa & Santri berbasis web online.">
     
     <!-- Google Fonts & FontAwesome -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -27,18 +31,49 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 	
-	<!-- Meta Tags Khusus WhatsApp & Media Sosial (Open Graph) -->
-    <meta property="og:type" content="website">
-    <meta property="og:title" content="EduAbsensi - Dashboard Administrator">
-    <meta property="og:description" content="Portal manajemen data siswa, pengaturan batas jam & lokasi absensi, serta rekapitulasi presensi harian sekolah secara terintegrasi.">
-    <!-- Ganti URL di bawah dengan URL web asli Anda jika sudah online -->
-    <meta property="og:image" content="https://moljeh.github.io/absensi/asset/logoweb.png">
-    <meta property="og:url" content="https://moljeh.github.io/absensi/">
+	
+	<!-- SCRIPT ANTI KEDIP (Menghilangkan Flash Form Login) -->
+    <script>
+        if (sessionStorage.getItem('adminLoggedIn')) {
+            const style = document.createElement('style');
+            style.innerHTML = '#login-wrapper { display: none !important; }';
+            document.head.appendChild(style);
+        }
+    </script>
+</head>
+	
 	
 	
 </head>
 
 <body>
+
+    <!-- HALAMAN LOGIN ADMINISTRATOR (OTOMATIS TERTUTUP JIKA SUDAH LOGIN) -->
+    <div id="login-wrapper" class="login-wrapper">
+        <div class="login-box">
+            <div class="login-header">
+                <img src="asset/logoweb.png" alt="Logo">
+                <h2>Login Administrator</h2>
+                <p>Silakan masuk untuk mengelola sistem presensi</p>
+            </div>
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="login-username" class="form-control" placeholder=" Masukkan username ">
+            </div>
+          <div class="form-group">
+                <label>Password</label>
+                <!-- Tambahan Wadah untuk Icon Eye -->
+                <div class="password-wrapper">
+                    <input type="password" id="login-password" class="form-control" placeholder=" Masukkan password ">
+                    <i class="fa-solid fa-eye" id="toggle-password" onclick="togglePasswordVisibility()"></i>
+                </div>
+            </div>
+            <button class="btn-primary" style="margin-top: 10px;" onclick="prosesLogin()" id="btn-login">
+                <i class="fa-solid fa-right-to-bracket"></i> Masuk Sekarang
+            </button>
+        </div>
+    </div>
+
     <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
 
     <aside class="sidebar" id="sidebar">
@@ -51,7 +86,7 @@
             <h2 class="school-name">SD NEGERI 1 INDONESIA</h2>
         </div>
 
-        <ul class="nav-menu">
+        <ul class="nav-menu" style="height: 100%; display: flex; flex-direction: column;">
             <li class="active" onclick="switchTab('dashboard-page', this)">
                 <i class="fa-solid fa-chart-pie"></i> Dashboard
             </li>
@@ -64,9 +99,12 @@
             <li onclick="switchTab('rekap-page', this)">
                 <i class="fa-solid fa-folder-open"></i> Rekap Data
             </li>
-            <!-- MENU PENGATURAN -->
             <li onclick="switchTab('pengaturan-page', this)">
                 <i class="fa-solid fa-gears"></i> Pengaturan
+            </li>
+            <!-- TOMBOL KELUAR -->
+            <li onclick="logoutAdmin()" style="margin-top: auto; color: #ef4444; border-top: 1px solid rgba(255,255,255,0.05); border-radius: 0;">
+                <i class="fa-solid fa-right-from-bracket"></i> Keluar
             </li>
         </ul>
     </aside>

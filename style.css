@@ -25,6 +25,19 @@
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; }
 body { background-color: var(--bg-main); color: var(--text-dark); display: flex; min-height: 100vh; overflow-x: hidden; }
 
+/* ==========================================
+   HALAMAN LOGIN OVERLAY
+   ========================================== */
+.login-wrapper { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg-main); z-index: 99999; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.login-box { background: var(--surface); padding: 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 100%; max-width: 400px; border: 1px solid var(--border); }
+.login-header { text-align: center; margin-bottom: 20px; }
+.login-header img { width: 70px; height: 70px; margin-bottom: 10px; }
+.login-header h2 { font-size: 1.3rem; font-weight: 700; color: var(--primary); }
+.login-header p { font-size: 0.85rem; color: var(--text-muted); }
+
+/* ==========================================
+   GAYA UMUM ADMIN
+   ========================================== */
 .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(2px); z-index: 999; }
 .sidebar-overlay.active { display: block; }
 
@@ -196,4 +209,46 @@ table td { padding: 12px 14px; border-bottom: 1px solid var(--border); font-size
     .print-ttd-box { width: 280px; text-align: center; }
     .print-ttd-box p { margin: 0 0 5px 0; }
     .print-ttd-space { height: 80px; }
+}
+
+
+/* ==========================================
+   GAYA SHOW/HIDE PASSWORD
+   ========================================== */
+.password-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.password-wrapper input {
+    padding-right: 40px; /* Memberi ruang agar teks tidak menabrak ikon */
+}
+#toggle-password {
+    position: absolute;
+    right: 12px;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 1.1rem;
+    transition: color 0.2s ease;
+}
+#toggle-password:hover {
+    color: var(--primary);
+}
+
+/* ==========================================
+   WARNA DINAMIS DROPDOWN STATUS ABSENSI
+   ========================================== */
+.status-hadir { color: #0f172a !important; font-weight: 700; } /* Hitam */
+.status-sakit { color: #d97706 !important; font-weight: 700; } /* Oranye / Kuning Gelap */
+.status-izin  { color: #2563eb !important; font-weight: 700; } /* Biru */
+.status-alpa  { color: #dc2626 !important; font-weight: 700; } /* Merah */
+
+/* Agar opsi di dalam dropdown tetap berwarna standar saat dibuka */
+.status-select option { color: #0f172a; font-weight: normal; }
+
+/* ==========================================
+   PERBAIKAN Z-INDEX (AGAR NOTIFIKASI TAMPIL DI DEPAN LOGIN)
+   ========================================== */
+.swal2-container {
+    z-index: 999999 !important;
 }

@@ -1,5 +1,5 @@
 // PASTIKAN URL INI SAMA DENGAN URL DI HALAMAN ADMIN
-const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbzJtdR7g9fa3g_YLdO6eX_9dOXjeB7wyrSlbZX9uZDNWRVP1f28_-r9xLqFdhozAeS0ew/exec";
+const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbyhv5E8MY80vWNBbPJtKHUy40H3rnp4T_7dqWri5BUqS3JG5zPp7sN5jyPURE_43hri/exec";
 
 let SCHOOL_LAT, SCHOOL_LNG, WAKTU_MULAI, WAKTU_SELESAI;
 let masterSiswaList = [];
@@ -105,14 +105,14 @@ function filterDataAbsensi() {
     
     siswaKelas.forEach((siswa, index) => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `
+tr.innerHTML = `
             <td><strong>${index + 1}</strong></td>
             <td>
                 <strong>${siswa.nama}</strong><br>
                 <code style="font-size:0.75rem; color:#64748b;">${siswa.nis}</code>
             </td>
             <td>
-                <select class="status-select" name="status_${index}">
+                <select class="status-select status-hadir" name="status_${index}" onchange="updateWarnaStatus(this)">
                     <option value="Hadir" selected>Hadir</option>
                     <option value="Sakit">Sakit</option>
                     <option value="Izin">Izin</option>
@@ -195,3 +195,23 @@ window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); defe
 document.getElementById('btn-install-pwa')?.addEventListener('click', async () => { if (pwaBanner) pwaBanner.classList.remove('show'); if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt = null; } });
 document.getElementById('btn-close-pwa')?.addEventListener('click', () => { if (pwaBanner) pwaBanner.classList.remove('show'); });
 window.addEventListener('appinstalled', () => { if (pwaBanner) pwaBanner.classList.remove('show'); });
+
+// ==========================================
+// FUNGSI UPDATE WARNA DROPDOWN STATUS
+// ==========================================
+function updateWarnaStatus(selectElement) {
+    // Hapus semua warna sebelumnya
+    selectElement.classList.remove('status-hadir', 'status-sakit', 'status-izin', 'status-alpa');
+    
+    // Tambahkan warna baru sesuai pilihan
+    const value = selectElement.value;
+    if (value === 'Hadir') {
+        selectElement.classList.add('status-hadir');
+    } else if (value === 'Sakit') {
+        selectElement.classList.add('status-sakit');
+    } else if (value === 'Izin') {
+        selectElement.classList.add('status-izin');
+    } else if (value === 'Alpa') {
+        selectElement.classList.add('status-alpa');
+    }
+}

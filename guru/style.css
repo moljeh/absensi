@@ -62,3 +62,14 @@ table td { padding: 10px; border-bottom: 1px solid var(--border); font-size: 0.8
 .pwa-text h4 { margin: 0; font-size: 0.9rem; }
 .pwa-text p { margin: 0; font-size: 0.75rem; color: var(--text-muted); }
 .pwa-banner-actions { display: flex; gap: 10px; align-items: center; }
+
+/* ==========================================
+   WARNA DINAMIS DROPDOWN STATUS ABSENSI
+   ========================================== */
+.status-hadir { color: #0f172a !important; font-weight: 700; } /* Hitam */
+.status-sakit { color: #d97706 !important; font-weight: 700; } /* Oranye / Kuning Gelap */
+.status-izin  { color: #2563eb !important; font-weight: 700; } /* Biru */
+.status-alpa  { color: #dc2626 !important; font-weight: 700; } /* Merah */
+
+/* Agar opsi di dalam dropdown tetap berwarna standar saat dibuka */
+.status-select option { color: #0f172a; font-weight: normal; }

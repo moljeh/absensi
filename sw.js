@@ -1,61 +1,58 @@
-const CACHE_NAME = 'eduabsensi-v1';
-const ASSETS_TO_CACHE = [
-    './',
-    './index.html',
-    './style.css',
-    './script.js',
-    './manifest.json',
-    './asset/logoapp.png',
-    './asset/logoweb.png',
-    './asset/favicon.png'
+const CACHE_NAME = 'eduabsensi-admin-v3';
+
+// Daftar file utama yang akan di-cache
+const urlsToCache = [
+  './',
+  './index.html',
+  './style.css',
+  './script.js',
+  './manifest.json'
 ];
 
-// Install Service Worker (Dengan Error Handling)
-self.addEventListener('install', (event) => {
-    event.waitUntil(
-        caches.open(CACHE_NAME).then(async (cache) => {
-            console.log('Mulai melakukan caching aset...');
-            for (let asset of ASSETS_TO_CACHE) {
-                try {
-                    await cache.add(asset);
-                } catch (error) {
-                    // Jika ada 1 file yang gagal/tidak ditemukan, error hanya dicatat
-                    // namun instalasi Service Worker (PWA) akan tetap dilanjutkan
-                    console.warn(`[PWA] Gagal meng-cache file: ${asset}`, error);
-                }
-            }
-        })
-    );
-    self.skipWaiting();
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(cache => {
+        // Menggunakan trik Promise.all dan .catch()
+        // Agar jika 1 file gagal ditemukan (404), file yang lain tetap sukses disimpan
+        return Promise.all(
+          urlsToCache.map(url => {
+            return cache.add(url).catch(err => {
+              console.warn('PWA Peringatan: File ini gagal di-cache (mungkin tidak ditemukan):', url);
+            });
+          })
+        );
+      })
+  );
 });
 
-// Activate Service Worker
-self.addEventListener('activate', (event) => {
-    event.waitUntil(
-        caches.keys().then((cacheNames) => {
-            return Promise.all(
-                cacheNames.map((cache) => {
-                    if (cache !== CACHE_NAME) {
-                        return caches.delete(cache);
-                    }
-                })
-            );
-        })
-    );
-    self.clients.claim();
+self.addEventListener('fetch', event => {
+  event.respondWith(
+    caches.match(event.request)
+      .then(response => {
+        // Kembalikan dari cache jika ada, jika tidak ambil dari jaringan (internet)
+        if (response) {
+          return response;
+        }
+        return fetch(event.request).catch(() => {
+            console.log('Fetch gagal, kemungkinan sedang offline.');
+        });
+      })
+  );
 });
 
-// Fetch Assets
-self.addEventListener('fetch', (event) => {
-    // Jalankan request API/POST langsung ke network (tanpa cache)
-    if (event.request.method !== 'GET') return;
-
-    event.respondWith(
-        caches.match(event.request).then((cachedResponse) => {
-            if (cachedResponse) {
-                return cachedResponse;
-            }
-            return fetch(event.request);
+// Membersihkan cache versi lama saat update
+self.addEventListener('activate', event => {
+  const cacheAllowlist = [CACHE_NAME];
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.map(cacheName => {
+          if (cacheAllowlist.indexOf(cacheName) === -1) {
+            return caches.delete(cacheName);
+          }
         })
-    );
+      );
+    })
+  );
 });
