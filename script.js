@@ -1,9 +1,9 @@
 // =========================================================================
-// SCRIPT UTAMA PANEL ADMINISTRATOR (EDUABSENSI)
+// SCRIPT UTAMA PANEL ADMINISTRATOR (EDUABSENSI) - VERSI BERSIH TANPA DOUBLE LOGIN
 // =========================================================================
 const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbyiT5PWDYEQV1xtjsB12rz-bgf4Rlu_TAUe7OqEbKO3noATaEhwU1pFjzfwBeNDLF-LsA/exec";
 
-// Langsung inisialisasi panel saat halaman dimuat (tanpa popup login)
+// Langsung inisialisasi panel saat halaman dimuat
 document.addEventListener('DOMContentLoaded', function() {
     initAdminPanel();
 });
@@ -43,7 +43,7 @@ function logoutAdmin() {
         cancelButtonText: 'Batal'
     }).then((result) => {
         if (result.isConfirmed) {
-            // Reload halaman atau arahkan ke file login.html Anda
+            // Karena tidak ada login bawaan script, reload halaman saja
             window.location.reload();
         }
     });
@@ -143,32 +143,34 @@ function muatDataDashboard() {
 
 function muatMasterSiswa() {
     const tbody = document.querySelector('#table-master tbody');
-    if(tbody) tbody.innerHTML = `<tr><td colspan="5" class="text-center">Memuat data...</td></tr>`;
-
-    fetch(URL_WEB_APP, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: "get_master" })
-    }).then(res => res.json()).then(response => {
-        if (response.result === 'success' && tbody) {
-            tbody.innerHTML = '';
-            if (response.data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="text-center">Data siswa masih kosong.</td></tr>`;
-                return;
+    if(tbody) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center">Memuat data...</td></tr>`;
+        
+        fetch(URL_WEB_APP, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: "get_master" })
+        }).then(res => res.json()).then(response => {
+            if (response.result === 'success') {
+                tbody.innerHTML = '';
+                if (response.data.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5" class="text-center">Data siswa masih kosong.</td></tr>`;
+                    return;
+                }
+                response.data.forEach((siswa, index) => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td class="text-center">${index + 1}</td>
+                            <td>${siswa.nis}</td>
+                            <td>${siswa.nama}</td>
+                            <td>${siswa.jk}</td>
+                            <td>${siswa.kelas}</td>
+                        </tr>
+                    `;
+                });
             }
-            response.data.forEach((siswa, index) => {
-                tbody.innerHTML += `
-                    <tr>
-                        <td class="text-center">${index + 1}</td>
-                        <td>${siswa.nis}</td>
-                        <td>${siswa.nama}</td>
-                        <td>${siswa.jk}</td>
-                        <td>${siswa.kelas}</td>
-                    </tr>
-                `;
-            });
-        }
-    }).catch(err => console.log('Error menarik master siswa.'));
+        }).catch(err => console.log('Error menarik master siswa.'));
+    }
 }
 
 // ==========================================
@@ -176,31 +178,33 @@ function muatMasterSiswa() {
 // ==========================================
 function muatAbsensiHariIni() {
     const tbody = document.querySelector('#table-absensi-hari-ini tbody');
-    if(tbody) tbody.innerHTML = `<tr><td colspan="4" class="text-center">Memuat data hari ini...</td></tr>`;
-    
-    fetch(URL_WEB_APP, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: "get_absensi_hari_ini" })
-    }).then(res => res.json()).then(response => {
-        if (response.result === 'success' && tbody) {
-            tbody.innerHTML = '';
-            if(response.data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="text-center">Belum ada absensi hari ini.</td></tr>`;
-            } else {
-                response.data.forEach((absen, index) => {
-                    tbody.innerHTML += `
-                        <tr>
-                            <td>${index + 1}</td>
-                            <td>${absen.kelas}</td>
-                            <td>${absen.guru}</td>
-                            <td>${absen.waktu}</td>
-                        </tr>
-                    `;
-                });
+    if(tbody) {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center">Memuat data hari ini...</td></tr>`;
+        
+        fetch(URL_WEB_APP, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: "get_absensi_hari_ini" })
+        }).then(res => res.json()).then(response => {
+            if (response.result === 'success') {
+                tbody.innerHTML = '';
+                if(response.data.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="4" class="text-center">Belum ada absensi hari ini.</td></tr>`;
+                } else {
+                    response.data.forEach((absen, index) => {
+                        tbody.innerHTML += `
+                            <tr>
+                                <td>${index + 1}</td>
+                                <td>${absen.kelas}</td>
+                                <td>${absen.guru}</td>
+                                <td>${absen.waktu}</td>
+                            </tr>
+                        `;
+                    });
+                }
             }
-        }
-    }).catch(err => console.log('Endpoint absensi hari ini belum disiapkan.'));
+        }).catch(err => console.log('Endpoint absensi hari ini belum disiapkan.'));
+    }
 }
 
 function muatRekapData() {
