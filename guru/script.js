@@ -1,7 +1,7 @@
 // PASTIKAN URL INI SAMA DENGAN URL DI HALAMAN ADMIN
 const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbyiT5PWDYEQV1xtjsB12rz-bgf4Rlu_TAUe7OqEbKO3noATaEhwU1pFjzfwBeNDLF-LsA/exec";
 
-let SCHOOL_LAT, SCHOOL_LNG, WAKTU_MULAI, WAKTU_SELESAI;
+let SCHOOL_LAT, SCHOOL_LNG, WAKTU_MULAI, WAKTU_SELESAI, MAX_RADIUS_METERS;
 let masterSiswaList = [];
 
 // Setup Tanggal Hari Ini
@@ -11,21 +11,60 @@ const month = String(today.getMonth() + 1).padStart(2, '0');
 const day = String(today.getDate()).padStart(2, '0');
 document.getElementById('tanggal').value = `${year}-${month}-${day}`;
 
+// ==========================================
+// FUNGSI NOTIFIKASI KECIL & PROFESIONAL
+// ==========================================
+function notifMini(title, text, icon) {
+    let color = '#4f46e5'; // Warna biru standar (Primary)
+    if (icon === 'error') color = '#d33';     // Merah untuk error
+    if (icon === 'warning') color = '#f59e0b'; // Oranye untuk peringatan
+
+    Swal.fire({
+        title: `<span style="font-size: 1.1rem; font-weight:700;">${title}</span>`,
+        html: `<span style="font-size: 0.85rem; color: #64748b; line-height:1.4; display:block;">${text}</span>`,
+        icon: icon,
+        width: '300px', // Memaksa ukuran kotak menjadi kecil
+        padding: '1.2em', // Mengurangi jarak tepi
+        confirmButtonColor: color,
+        confirmButtonText: 'OK',
+        customClass: { confirmButton: 'btn-sm' }
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     inisialisasiAplikasiGuru();
 });
 
-// Tarik Pengaturan (Koordinat & Jam) lalu tarik Master Data Siswa
+// ==========================================
+// RUMUS MENGHITUNG JARAK (HAVERSINE)
+// ==========================================
+function hitungJarak(lat1, lon1, lat2, lon2) {
+    const R = 6371e3; 
+    const φ1 = lat1 * Math.PI/180;
+    const φ2 = lat2 * Math.PI/180;
+    const Δφ = (lat2-lat1) * Math.PI/180;
+    const Δλ = (lon2-lon1) * Math.PI/180;
+
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+// ==========================================
+// INISIALISASI & TARIK DATA
+// ==========================================
 function inisialisasiAplikasiGuru() {
-    // Munculkan Loading Saat Aplikasi Baru Dibuka
     Swal.fire({
-        title: 'Menghubungkan ke Server...',
-        text: 'Mohon tunggu, sedang menyiapkan data kelas dan siswa.',
+        title: '<span style="font-size: 1.1rem;">Menyiapkan Data...</span>',
+        html: '<span style="font-size: 0.85rem; color: #64748b;">Menghubungkan ke server sekolah.</span>',
         allowOutsideClick: false,
+        showConfirmButton: false,
+        width: '300px', padding: '1.5em',
         didOpen: () => { Swal.showLoading(); }
     });
 
-    // 1. Ambil Pengaturan dari Database
     fetch(URL_WEB_APP, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -36,15 +75,22 @@ function inisialisasiAplikasiGuru() {
         if (response.result === 'success') {
             SCHOOL_LAT = response.data.lat;
             SCHOOL_LNG = response.data.lng;
-            WAKTU_MULAI = response.data.waktu_mulai || "00:00";
-            WAKTU_SELESAI = response.data.waktu_selesai || "23:59";
+            MAX_RADIUS_METERS = response.data.radius || 50;
             
-            // 2. Lanjut Ambil Data Kelas/Siswa
+            let wMulai = String(response.data.waktu_mulai || "00:00").trim();
+            let wSelesai = String(response.data.waktu_selesai || "23:59").trim();
+
+            if (wMulai.indexOf(':') === 1) wMulai = "0" + wMulai;
+            if (wSelesai.indexOf(':') === 1) wSelesai = "0" + wSelesai;
+
+            WAKTU_MULAI = wMulai.substring(0, 5);
+            WAKTU_SELESAI = wSelesai.substring(0, 5);
+            
             tarikDataSiswa();
         }
     })
     .catch(err => {
-        Swal.fire('Error Koneksi', 'Gagal terhubung ke database sekolah. Periksa koneksi internet Anda.', 'error');
+        notifMini('Error Koneksi', 'Gagal terhubung ke database. Periksa internet Anda.', 'error');
     });
 }
 
@@ -60,20 +106,18 @@ function tarikDataSiswa() {
             masterSiswaList = response.data;
             updateDropdownKelas();
             
-            // Jika sukses, ubah loading menjadi centang hijau dan otomatis tertutup
             Swal.fire({
-                title: 'Siap Digunakan!',
-                text: 'Data kelas berhasil dimuat.',
-                icon: 'success',
-                timer: 1500,
-                showConfirmButton: false
+                title: '<span style="font-size: 1.1rem;">Siap Digunakan!</span>',
+                html: '<span style="font-size: 0.85rem; color: #64748b;">Data kelas berhasil dimuat.</span>',
+                icon: 'success', timer: 1500, showConfirmButton: false,
+                width: '300px', padding: '1.2em'
             });
         } else {
-            Swal.fire('Data Kosong', 'Data siswa belum tersedia. Silakan hubungi Admin.', 'warning');
+            notifMini('Data Kosong', 'Data siswa belum tersedia. Hubungi Admin.', 'warning');
         }
     })
     .catch(err => {
-        Swal.fire('Error', 'Gagal memuat daftar siswa. Periksa koneksi internet Anda.', 'error');
+        notifMini('Error', 'Gagal memuat daftar siswa. Cek koneksi Anda.', 'error');
     });
 }
 
@@ -83,7 +127,6 @@ function updateDropdownKelas() {
     
     const daftarKelas = [...new Set(masterSiswaList.map(s => s.kelas))].sort();
     daftarKelas.forEach(k => { selectKelas.appendChild(new Option(k, k)); });
-    
     selectKelas.disabled = false;
 }
 
@@ -105,7 +148,7 @@ function filterDataAbsensi() {
     
     siswaKelas.forEach((siswa, index) => {
         const tr = document.createElement('tr');
-tr.innerHTML = `
+        tr.innerHTML = `
             <td><strong>${index + 1}</strong></td>
             <td>
                 <strong>${siswa.nama}</strong><br>
@@ -124,66 +167,85 @@ tr.innerHTML = `
     });
 }
 
-// KIRIM DATA ABSENSI
+// ==========================================
+// KIRIM DATA ABSENSI KE GOOGLE SHEETS
+// ==========================================
 function simpanAbsensi() {
     const kelas = document.getElementById('kelas').value;
     const tanggal = document.getElementById('tanggal').value;
     const barisSiswa = document.querySelectorAll('#attendance-table tbody tr');
 
     if (!kelas || barisSiswa.length === 0 || barisSiswa[0].querySelector('.text-center')) { 
-        Swal.fire('Peringatan', 'Pilih kelas Anda terlebih dahulu!', 'warning'); return; 
+        notifMini('Perhatian', 'Pilih kelas Anda terlebih dahulu!', 'warning'); 
+        return; 
     }
 
-    // VALIDASI WAKTU ABSENSI
     const now = new Date();
     const currentHours = String(now.getHours()).padStart(2, '0');
     const currentMinutes = String(now.getMinutes()).padStart(2, '0');
     const currentTime = `${currentHours}:${currentMinutes}`;
 
     if (currentTime < WAKTU_MULAI || currentTime > WAKTU_SELESAI) {
-        Swal.fire({
-            title: 'Waktu Absensi Ditutup',
-            text: `Sekarang jam ${currentTime}. Presensi hanya bisa dikirim antara pukul ${WAKTU_MULAI} sampai ${WAKTU_SELESAI}.`,
-            icon: 'error',
-            confirmButtonColor: '#d33'
-        });
+        notifMini('Waktu Ditutup', `Sekarang jam <b>${currentTime}</b>.<br>Presensi hanya bisa dikirim antara pukul <b>${WAKTU_MULAI}</b> s/d <b>${WAKTU_SELESAI}</b>.`, 'error');
         return;
     }
 
-    let hasilAbsensi = [];
-    barisSiswa.forEach((tr, index) => {
-        hasilAbsensi.push({ 
-            nis: tr.querySelector('code').innerText, 
-            nama: tr.querySelector('strong:not(:empty)').innerText, 
-            status: tr.querySelector(`select[name="status_${index}"]`).value 
-        });
-    });
+    if (!navigator.geolocation) {
+        notifMini('GPS Tidak Didukung', 'Browser/HP Anda tidak mendukung pendeteksian lokasi.', 'error');
+        return;
+    }
 
-    // Koordinat yang dikirim adalah koordinat sekolah murni dari database
-    const koordinatTersimpan = SCHOOL_LAT + ", " + SCHOOL_LNG;
-    const payload = { action: "simpan_absensi", kelas, tanggal, koordinat: koordinatTersimpan, data: hasilAbsensi };
-    
     Swal.fire({
-        title: 'Mengirim Data...',
-        text: 'Mohon tunggu sebentar.',
-        allowOutsideClick: false,
+        title: '<span style="font-size: 1.1rem;">Memproses...</span>',
+        html: '<span style="font-size: 0.85rem; color: #64748b;">Mengirim data mohon tunggu.</span>',
+        allowOutsideClick: false, showConfirmButton: false,
+        width: '300px', padding: '1.5em',
         didOpen: () => { Swal.showLoading(); }
     });
 
-    fetch(URL_WEB_APP, {
-        method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(payload)
-    }).then(res => res.json()).then(response => {
-        if (response.result === 'success') {
-            Swal.fire('Terkirim!', `Presensi ${kelas} berhasil diserahkan ke sistem admin.`, 'success');
-            
-            // Reset state
-            document.getElementById('kelas').value = "";
-            document.querySelector('#attendance-table tbody').innerHTML = `<tr><td colspan="3" class="text-center text-muted">Silakan pilih kelas terlebih dahulu.</td></tr>`;
-        } else {
-            Swal.fire('Gagal!', response.message, 'error');
-        }
-    }).catch(err => Swal.fire('Error', 'Gagal mengirim data. Cek koneksi HP Anda.', 'error'));
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            const userLat = position.coords.latitude;
+            const userLng = position.coords.longitude;
+            const jarakMeter = hitungJarak(userLat, userLng, SCHOOL_LAT, SCHOOL_LNG);
+
+            if (jarakMeter > MAX_RADIUS_METERS) {
+                notifMini('Di Luar Radius!', `Jarak Anda <b>${Math.round(jarakMeter)} meter</b> dari sekolah.<br>Batas maksimal adalah ${MAX_RADIUS_METERS} meter. Silakan mendekat.`, 'warning');
+                return;
+            }
+
+            let hasilAbsensi = [];
+            barisSiswa.forEach((tr, index) => {
+                hasilAbsensi.push({ 
+                    nis: tr.querySelector('code').innerText, 
+                    nama: tr.querySelectorAll('strong')[1].innerText, 
+                    status: tr.querySelector(`select[name="status_${index}"]`).value 
+                });
+            });
+
+            const koordinatTersimpan = userLat.toFixed(6) + ", " + userLng.toFixed(6);
+            const payload = { action: "simpan_absensi", kelas, tanggal, koordinat: koordinatTersimpan, data: hasilAbsensi };
+
+            fetch(URL_WEB_APP, {
+                method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(payload)
+            }).then(res => res.json()).then(response => {
+                if (response.result === 'success') {
+                    // Notifikasi sukses yang ramping
+                    notifMini('Terkirim!', `Presensi ${kelas} berhasil diserahkan.<br><br><b>Jarak Anda: ${Math.round(jarakMeter)} m</b>`, 'success');
+                    
+                    document.getElementById('kelas').value = "";
+                    document.querySelector('#attendance-table tbody').innerHTML = `<tr><td colspan="3" class="text-center text-muted">Silakan pilih kelas terlebih dahulu.</td></tr>`;
+                } else {
+                    notifMini('Gagal!', response.message, 'error');
+                }
+            }).catch(err => notifMini('Error', 'Gagal mengirim data. Cek koneksi internet Anda.', 'error'));
+        },
+        (error) => {
+            notifMini('Lokasi Gagal', 'Gagal mendapatkan lokasi. Pastikan izin GPS aktif.', 'error');
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
 }
 
 // ==========================================
@@ -200,18 +262,10 @@ window.addEventListener('appinstalled', () => { if (pwaBanner) pwaBanner.classLi
 // FUNGSI UPDATE WARNA DROPDOWN STATUS
 // ==========================================
 function updateWarnaStatus(selectElement) {
-    // Hapus semua warna sebelumnya
     selectElement.classList.remove('status-hadir', 'status-sakit', 'status-izin', 'status-alpa');
-    
-    // Tambahkan warna baru sesuai pilihan
     const value = selectElement.value;
-    if (value === 'Hadir') {
-        selectElement.classList.add('status-hadir');
-    } else if (value === 'Sakit') {
-        selectElement.classList.add('status-sakit');
-    } else if (value === 'Izin') {
-        selectElement.classList.add('status-izin');
-    } else if (value === 'Alpa') {
-        selectElement.classList.add('status-alpa');
-    }
+    if (value === 'Hadir') selectElement.classList.add('status-hadir');
+    else if (value === 'Sakit') selectElement.classList.add('status-sakit');
+    else if (value === 'Izin') selectElement.classList.add('status-izin');
+    else if (value === 'Alpa') selectElement.classList.add('status-alpa');
 }
