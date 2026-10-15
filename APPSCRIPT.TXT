@@ -304,14 +304,20 @@ function doPost(e) {
         var dataAsli = sheetPengaturan.getDataRange().getValues(); // Untuk angka Koordinat (Desimal Asli)
         
         if (dataAsli.length > 1) {
-          // Tarik koordinat dari data asli agar desimal tidak terpotong koma
+          // 1. Tarik koordinat dari data asli agar desimal tidak terpotong (JANGAN DIHAPUS)
           config.lat = parseFloat(dataAsli[1][0]);
           config.lng = parseFloat(dataAsli[1][1]);
           config.radius = parseInt(dataAsli[1][2]);
-          
-          // Tarik jam dari data tampilan agar format (HH:MM) tidak berubah menjadi tanggal
-          var wMulai = String(dataTampilan[1][3] || "00:00");
-          var wSelesai = String(dataTampilan[1][4] || "23:59");
+
+          // 2. Tarik jam dari data tampilan agar format (HH:MM) tidak berubah menjadi tanggal
+          var wMulai = String(dataTampilan[1][3] || "00:00").trim();
+          var wSelesai = String(dataTampilan[1][4] || "23:59").trim();
+
+          // PERBAIKAN OTOMATIS: 
+          // Jika jam yang ditarik dari Sheets hanya 1 digit, paksa tambahkan angka "0"
+          if (wMulai.indexOf(':') === 1) wMulai = "0" + wMulai;
+          if (wSelesai.indexOf(':') === 1) wSelesai = "0" + wSelesai;
+
           config.waktu_mulai = wMulai.substring(0, 5);
           config.waktu_selesai = wSelesai.substring(0, 5);
         }
