@@ -1,98 +1,23 @@
 // =========================================================================
 // SCRIPT UTAMA PANEL ADMINISTRATOR (EDUABSENSI)
-// PASTIKAN URL INI SAMA PERSIS DENGAN YANG ADA DI SCRIPT GURU
 // =========================================================================
 const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbyiT5PWDYEQV1xtjsB12rz-bgf4Rlu_TAUe7OqEbKO3noATaEhwU1pFjzfwBeNDLF-LsA/exec";
 
-// ==========================================
-// 1. INISIALISASI & SISTEM LOGIN (FIX Z-INDEX)
-// ==========================================
+// Langsung inisialisasi panel saat halaman dimuat (tanpa popup login)
 document.addEventListener('DOMContentLoaded', function() {
-    cekLoginAdmin();
+    initAdminPanel();
 });
 
-function cekLoginAdmin() {
-    const isLoggedIn = sessionStorage.getItem("admin_logged_in");
-    
-    if (!isLoggedIn) {
-        Swal.fire({
-            title: 'Login Administrator',
-            html: `
-                <input type="text" id="username" class="swal2-input" placeholder="Username">
-                <input type="password" id="password" class="swal2-input" placeholder="Password">
-            `,
-            confirmButtonText: 'Masuk',
-            allowOutsideClick: false,
-            allowEscapeKey: false,
-            returnFocus: false, // FIX: Mencegah error fokus aksesibilitas
-            didOpen: () => {
-                // FIX: Menghapus aria-hidden agar layar tidak terkunci/gelap
-                document.body.removeAttribute('aria-hidden');
-            },
-            preConfirm: () => {
-                const user = Swal.getPopup().querySelector('#username').value;
-                const pass = Swal.getPopup().querySelector('#password').value;
-                if (!user || !pass) {
-                    Swal.showValidationMessage(`Username dan Password wajib diisi!`);
-                }
-                return { user, pass };
-            }
-        }).then((result) => {
-            if (result.isConfirmed) {
-                // Konfigurasi Login Default (Ganti sesuai kebutuhan)
-                if (result.value.user === "admin" && result.value.pass === "123456") {
-                    sessionStorage.setItem("admin_logged_in", "true");
-                    Swal.fire({
-                        title: 'Berhasil Login',
-                        text: 'Selamat datang di Panel Admin',
-                        icon: 'success',
-                        timer: 1500,
-                        showConfirmButton: false,
-                        returnFocus: false
-                    });
-                    initAdminPanel();
-                } else {
-                    Swal.fire({
-                        title: 'Akses Ditolak',
-                        text: 'Username atau Password salah!',
-                        icon: 'error',
-                        returnFocus: false
-                    }).then(() => cekLoginAdmin()); // Panggil ulang form jika gagal
-                }
-            }
-        });
-    } else {
-        initAdminPanel();
-    }
-}
-
-function logoutAdmin() {
-    Swal.fire({
-        title: 'Keluar?',
-        text: "Anda akan keluar dari sesi Administrator.",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Ya, Keluar',
-        cancelButtonText: 'Batal',
-        returnFocus: false
-    }).then((result) => {
-        if (result.isConfirmed) {
-            sessionStorage.removeItem("admin_logged_in");
-            window.location.reload();
-        }
-    });
-}
-
 // ==========================================
-// 2. NAVIGASI MENU (ROUTING)
+// 1. NAVIGASI MENU (ROUTING)
 // ==========================================
 function initAdminPanel() {
-    // Tampilkan halaman Dashboard sebagai default saat pertama login
+    // Tampilkan halaman Dashboard sebagai default
     bukaMenu('dashboard');
 }
 
 function bukaMenu(menuId) {
-    // Sembunyikan semua halaman (class 'page-content' harus ada di setiap section HTML)
+    // Sembunyikan semua halaman (class 'page-content')
     const pages = document.querySelectorAll('.page-content');
     pages.forEach(page => page.style.display = 'none');
     
@@ -108,11 +33,27 @@ function bukaMenu(menuId) {
     else if (menuId === 'pengaturan') muatPengaturan();
 }
 
+function logoutAdmin() {
+    Swal.fire({
+        title: 'Keluar?',
+        text: "Anda akan keluar dari sesi Administrator.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Keluar',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Reload halaman atau arahkan ke file login.html Anda
+            window.location.reload();
+        }
+    });
+}
+
 // ==========================================
-// 3. FUNGSI PENGATURAN LOKASI & JAM (FULL)
+// 2. FUNGSI PENGATURAN LOKASI & JAM
 // ==========================================
 function muatPengaturan() {
-    Swal.fire({ title: 'Memuat Pengaturan...', allowOutsideClick: false, returnFocus: false, didOpen: () => Swal.showLoading() });
+    Swal.fire({ title: 'Memuat Pengaturan...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
     fetch(URL_WEB_APP, {
         method: 'POST',
@@ -138,14 +79,14 @@ function gunakanLokasiSaatIni() {
         return;
     }
 
-    Swal.fire({ title: 'Mencari Titik Sekolah...', text: 'Pastikan GPS perangkat Anda aktif.', allowOutsideClick: false, returnFocus: false, didOpen: () => Swal.showLoading() });
+    Swal.fire({ title: 'Mencari Titik Sekolah...', text: 'Pastikan GPS perangkat Anda aktif.', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
     navigator.geolocation.getCurrentPosition(
         (position) => {
             Swal.close();
             document.getElementById('input-lat').value = position.coords.latitude;
             document.getElementById('input-lng').value = position.coords.longitude;
-            Swal.fire({ title: 'Sukses!', text: 'Koordinat diperbarui ke lokasi Anda saat ini. Jangan lupa klik Simpan.', icon: 'success', returnFocus: false });
+            Swal.fire({ title: 'Sukses!', text: 'Koordinat diperbarui ke lokasi Anda saat ini. Jangan lupa klik Simpan.', icon: 'success' });
         },
         (error) => {
             Swal.fire('Gagal', 'Tidak dapat mendeteksi lokasi. Pastikan izin akses lokasi diberikan ke browser.', 'error');
@@ -165,7 +106,7 @@ function simpanPengaturan() {
         Swal.fire('Peringatan', 'Semua kolom pengaturan harus diisi!', 'warning'); return;
     }
 
-    Swal.fire({ title: 'Menyimpan...', allowOutsideClick: false, returnFocus: false, didOpen: () => Swal.showLoading() });
+    Swal.fire({ title: 'Menyimpan...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
     fetch(URL_WEB_APP, {
         method: 'POST',
@@ -175,7 +116,7 @@ function simpanPengaturan() {
     .then(res => res.json())
     .then(response => {
         if (response.result === 'success') {
-            Swal.fire({ title: 'Tersimpan!', text: 'Pengaturan berhasil diperbarui di database.', icon: 'success', returnFocus: false });
+            Swal.fire({ title: 'Tersimpan!', text: 'Pengaturan berhasil diperbarui di database.', icon: 'success' });
         } else {
             Swal.fire('Gagal!', 'Terjadi kesalahan saat menyimpan.', 'error');
         }
@@ -183,10 +124,9 @@ function simpanPengaturan() {
 }
 
 // ==========================================
-// 4. MODUL DASHBOARD & MASTER DATA (LENGKAP)
+// 3. MODUL DASHBOARD & MASTER DATA
 // ==========================================
 function muatDataDashboard() {
-    // Tarik total siswa, rombel, dll dari backend
     fetch(URL_WEB_APP, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -198,7 +138,7 @@ function muatDataDashboard() {
             document.getElementById('stat-laki').innerText = response.data.laki || 0;
             document.getElementById('stat-perempuan').innerText = response.data.perempuan || 0;
         }
-    }).catch(err => console.log('Silakan siapkan endpoint action: get_dashboard_stats di Apps Script.'));
+    }).catch(err => console.log('Endpoint dashboard stats belum disiapkan.'));
 }
 
 function muatMasterSiswa() {
@@ -232,13 +172,12 @@ function muatMasterSiswa() {
 }
 
 // ==========================================
-// 5. MODUL ABSENSI & REKAP DATA (LENGKAP)
+// 4. MODUL ABSENSI & REKAP DATA
 // ==========================================
 function muatAbsensiHariIni() {
     const tbody = document.querySelector('#table-absensi-hari-ini tbody');
     if(tbody) tbody.innerHTML = `<tr><td colspan="4" class="text-center">Memuat data hari ini...</td></tr>`;
     
-    // Fungsi untuk menarik log absen khusus tanggal hari ini
     fetch(URL_WEB_APP, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -261,22 +200,19 @@ function muatAbsensiHariIni() {
                 });
             }
         }
-    }).catch(err => console.log('Silakan siapkan endpoint action: get_absensi_hari_ini di Apps Script.'));
+    }).catch(err => console.log('Endpoint absensi hari ini belum disiapkan.'));
 }
 
 function muatRekapData() {
-    // Fungsi ini bisa dihubungkan ke tombol "Filter" atau "Cetak Laporan PDF/Excel" pada halaman Rekap Data
-    // Logika SheetJS atau pencetakan PDF (jsPDF / window.print) diletakkan di bagian ini sesuai desain Anda.
     console.log("Halaman Rekap Data siap digunakan.");
 }
 
 function cetakLaporan() {
-    // Membuka dialog print bawaan browser
     window.print();
 }
 
 // ==========================================
-// 6. PWA INSTALLATION (ADMIN PANEL)
+// 5. PWA INSTALLATION (ADMIN PANEL)
 // ==========================================
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
