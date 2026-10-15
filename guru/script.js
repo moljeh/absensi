@@ -1,5 +1,5 @@
 // PASTIKAN URL INI SAMA DENGAN URL DI HALAMAN ADMIN
-const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbx0kfSz5mkRLeItL_6SYNmFXt8CHXjv5k_eIuD30nxla4Z_UyGdEqvR3fi1KmzSEILI6Q/exec";
+const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbyiT5PWDYEQV1xtjsB12rz-bgf4Rlu_TAUe7OqEbKO3noATaEhwU1pFjzfwBeNDLF-LsA/exec";
 
 let SCHOOL_LAT, SCHOOL_LNG, WAKTU_MULAI, WAKTU_SELESAI;
 let masterSiswaList = [];
