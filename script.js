@@ -1,4 +1,4 @@
-const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbyhv5E8MY80vWNBbPJtKHUy40H3rnp4T_7dqWri5BUqS3JG5zPp7sN5jyPURE_43hri/exec";
+const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbx0kfSz5mkRLeItL_6SYNmFXt8CHXjv5k_eIuD30nxla4Z_UyGdEqvR3fi1KmzSEILI6Q/exec";
 
 let SCHOOL_LAT = -6.200000; 
 let SCHOOL_LNG = 106.816666;
