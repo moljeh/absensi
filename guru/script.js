@@ -1,5 +1,5 @@
 // PASTIKAN URL INI SAMA DENGAN URL DI HALAMAN ADMIN
-const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbyiT5PWDYEQV1xtjsB12rz-bgf4Rlu_TAUe7OqEbKO3noATaEhwU1pFjzfwBeNDLF-LsA/exec";
+const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbySHYbk5pXzNlQ1vYsNcFYgA8dxXxBoYfATnQ6vk3CtBp6idVWcCVtYGa7R_uFAvl69nw/exec";
 
 let SCHOOL_LAT, SCHOOL_LNG, WAKTU_MULAI, WAKTU_SELESAI, MAX_RADIUS_METERS;
 let masterSiswaList = [];
@@ -10,6 +10,9 @@ const year = today.getFullYear();
 const month = String(today.getMonth() + 1).padStart(2, '0');
 const day = String(today.getDate()).padStart(2, '0');
 document.getElementById('tanggal').value = `${year}-${month}-${day}`;
+
+// Memastikan jika tanggal berubah, tabel otomatis me-refresh data
+document.getElementById('tanggal').addEventListener('change', filterDataAbsensi);
 
 // ==========================================
 // FUNGSI NOTIFIKASI KECIL & PROFESIONAL
@@ -132,11 +135,19 @@ function updateDropdownKelas() {
 
 function filterDataAbsensi() {
     const kelasTerpilih = document.getElementById('kelas').value;
+    const tanggalTerpilih = document.getElementById('tanggal').value;
     const tbody = document.querySelector('#attendance-table tbody');
+    const btnSimpan = document.querySelector('.btn-primary'); // Menargetkan tombol kirim
+
     tbody.innerHTML = '';
     
     if (!kelasTerpilih) {
         tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted">Silakan pilih kelas terlebih dahulu.</td></tr>`;
+        // Kembalikan tombol ke mode awal
+        if(btnSimpan) {
+            btnSimpan.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Kirim Presensi Sekarang';
+            btnSimpan.style.backgroundColor = 'var(--primary)';
+        }
         return;
     }
     
@@ -146,27 +157,71 @@ function filterDataAbsensi() {
         return;
     }
     
-    siswaKelas.forEach((siswa, index) => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td><strong>${index + 1}</strong></td>
-            <td>
-                <strong>${siswa.nama}</strong><br>
-                <code style="font-size:0.75rem; color:#64748b;">${siswa.nis}</code>
-            </td>
-            <td>
-                <select class="status-select status-hadir" name="status_${index}" onchange="updateWarnaStatus(this)">
-                    <option value="Hadir" selected>Hadir</option>
-                    <option value="Sakit">Sakit</option>
-                    <option value="Izin">Izin</option>
-                    <option value="Alpa">Alpa</option>
-                </select>
-            </td>
-        `;
-        tbody.appendChild(tr);
+    // Munculkan indikator loading di dalam tabel
+    tbody.innerHTML = `<tr><td colspan="3" class="text-center"><i class="fa-solid fa-spinner fa-spin" style="font-size:1.5rem; color:var(--primary); margin-bottom:10px;"></i><br><span style="font-size:0.85rem; color:#64748b;">Mengecek riwayat absen hari ini...</span></td></tr>`;
+
+    // Tarik data dari server untuk mengecek apakah kelas ini sudah diabsen hari ini
+    const parts = tanggalTerpilih.split("-");
+    
+    fetch(URL_WEB_APP, {
+        method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: "get_rekap", kelas: kelasTerpilih, bulan: parts[1], tahun: parts[0] })
+    })
+    .then(res => res.json())
+    .then(response => {
+        tbody.innerHTML = ''; 
+        
+        let dataHariIni = [];
+        if (response.result === 'success') {
+            dataHariIni = response.data.filter(d => d.tanggal === tanggalTerpilih);
+        }
+
+        siswaKelas.forEach((siswa, index) => {
+            // Cek status sebelumnya, jika belum ada set default "Hadir"
+            let statusTersimpan = "Hadir";
+            const savedItem = dataHariIni.find(d => String(d.nis) === String(siswa.nis));
+            if (savedItem) {
+                statusTersimpan = savedItem.status;
+            }
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${index + 1}</strong></td>
+                <td>
+                    <strong>${siswa.nama}</strong><br>
+                    <code style="font-size:0.75rem; color:#64748b;">${siswa.nis}</code>
+                </td>
+                <td>
+                    <select class="status-select" name="status_${index}" onchange="updateWarnaStatus(this)">
+                        <option value="Hadir" ${statusTersimpan==='Hadir'?'selected':''}>Hadir</option>
+                        <option value="Sakit" ${statusTersimpan==='Sakit'?'selected':''}>Sakit</option>
+                        <option value="Izin" ${statusTersimpan==='Izin'?'selected':''}>Izin</option>
+                        <option value="Alpa" ${statusTersimpan==='Alpa'?'selected':''}>Alpa</option>
+                    </select>
+                </td>
+            `;
+            tbody.appendChild(tr);
+            updateWarnaStatus(tr.querySelector('select'));
+        });
+
+        // Jika data hari ini sudah ada, aktifkan Mode Edit pada tombol
+        if (dataHariIni.length > 0) {
+            notifMini('Mode Koreksi', 'Kelas ini sudah diabsen sebelumnya.<br>Silakan perbaiki data yang salah lalu kirim ulang.', 'info');
+            if(btnSimpan) {
+                btnSimpan.innerHTML = '<i class="fa-solid fa-pen-to-square"></i> Perbarui Presensi';
+                btnSimpan.style.backgroundColor = '#f59e0b'; // Ubah tombol jadi Oranye
+            }
+        } else {
+            if(btnSimpan) {
+                btnSimpan.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Kirim Presensi Sekarang';
+                btnSimpan.style.backgroundColor = 'var(--primary)'; // Warna default Biru
+            }
+        }
+    })
+    .catch(err => {
+        tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted" style="color:red;">Gagal terhubung ke database. Silakan pilih kelas kembali.</td></tr>`;
     });
 }
-
 // ==========================================
 // KIRIM DATA ABSENSI KE GOOGLE SHEETS
 // ==========================================

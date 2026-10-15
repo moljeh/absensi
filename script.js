@@ -1,4 +1,4 @@
-const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbyiT5PWDYEQV1xtjsB12rz-bgf4Rlu_TAUe7OqEbKO3noATaEhwU1pFjzfwBeNDLF-LsA/exec";
+const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbySHYbk5pXzNlQ1vYsNcFYgA8dxXxBoYfATnQ6vk3CtBp6idVWcCVtYGa7R_uFAvl69nw/exec";
 
 let SCHOOL_LAT = -6.200000; 
 let SCHOOL_LNG = 106.816666;
@@ -17,6 +17,8 @@ const year = today.getFullYear();
 const month = String(today.getMonth() + 1).padStart(2, '0');
 const day = String(today.getDate()).padStart(2, '0');
 document.getElementById('tanggal').value = `${year}-${month}-${day}`;
+
+document.getElementById('tanggal').addEventListener('change', filterDataAbsensi);
 
 // ==========================================
 // PENANGANAN STATUS LOGIN (SESSION)
@@ -504,26 +506,77 @@ function downloadTemplateExcel() {
 // ==========================================
 function filterDataAbsensi() {
     const kelasTerpilih = document.getElementById('kelas').value;
+    const tanggalTerpilih = document.getElementById('tanggal').value;
     const tbody = document.querySelector('#attendance-table tbody');
     tbody.innerHTML = '';
+    
     if (!kelasTerpilih) {
         tbody.innerHTML = `<tr><td colspan="4"><div class="empty-state"><i class="fa-solid fa-chalkboard-user" style="font-size: 2.8rem; color: var(--primary);"></i><p>Silakan Pilih Kelas / Rombel Anda</p></div></td></tr>`;
         return;
     }
+
     const siswaKelas = masterSiswaList.filter(s => s.kelas === kelasTerpilih);
     if (siswaKelas.length === 0) {
         tbody.innerHTML = `<tr><td colspan="4"><div class="empty-state"><p>Tidak ada siswa di kelas ini.</p></div></td></tr>`;
         return;
     }
-    siswaKelas.forEach((siswa, index) => {
-        const tr = document.createElement('tr');
-        tr.onclick = function() { document.querySelectorAll('#attendance-table tbody tr').forEach(r => r.classList.remove('selected-row')); tr.classList.add('selected-row'); };
-      tr.innerHTML = `<td><strong>${index + 1}</strong></td><td><code>${siswa.nis}</code></td><td><strong>${siswa.nama}</strong></td>
-            <td><select class="status-select status-hadir" name="status_${index}" onfocus="this.closest('tr').click()" onchange="updateWarnaStatus(this)">
-                <option value="Hadir" selected>Hadir</option><option value="Sakit">Sakit</option>
-                <option value="Izin">Izin</option><option value="Alpa">Alpa</option>
-            </select></td>`;
-        tbody.appendChild(tr);
+
+    // Tampilkan loading saat menarik data lama
+    tbody.innerHTML = `<tr><td colspan="4"><div class="empty-state"><i class="fa-solid fa-spinner fa-spin" style="font-size:2rem; color:var(--primary); margin-bottom:10px;"></i><p>Mengecek riwayat absensi tanggal ini...</p></div></td></tr>`;
+
+    // Tarik data dari server untuk mengecek apakah sudah diabsen
+    const parts = tanggalTerpilih.split("-");
+    
+    fetch(URL_WEB_APP, {
+        method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: "get_rekap", kelas: kelasTerpilih, bulan: parts[1], tahun: parts[0] })
+    })
+    .then(res => res.json())
+    .then(response => {
+        tbody.innerHTML = ''; 
+        
+        let dataHariIni = [];
+        if (response.result === 'success') {
+            dataHariIni = response.data.filter(d => d.tanggal === tanggalTerpilih);
+        }
+
+        siswaKelas.forEach((siswa, index) => {
+            // Cek apakah siswa ini sudah punya status sebelumnya (jika belum, default Hadir)
+            let statusTersimpan = "Hadir";
+            const savedItem = dataHariIni.find(d => String(d.nis) === String(siswa.nis));
+            if (savedItem) {
+                statusTersimpan = savedItem.status;
+            }
+
+            const tr = document.createElement('tr');
+            tr.onclick = function() { document.querySelectorAll('#attendance-table tbody tr').forEach(r => r.classList.remove('selected-row')); tr.classList.add('selected-row'); };
+            tr.innerHTML = `<td><strong>${index + 1}</strong></td><td><code>${siswa.nis}</code></td><td><strong>${siswa.nama}</strong></td>
+                <td><select class="status-select" name="status_${index}" onfocus="this.closest('tr').click()" onchange="updateWarnaStatus(this)">
+                    <option value="Hadir" ${statusTersimpan==='Hadir'?'selected':''}>Hadir</option>
+                    <option value="Sakit" ${statusTersimpan==='Sakit'?'selected':''}>Sakit</option>
+                    <option value="Izin" ${statusTersimpan==='Izin'?'selected':''}>Izin</option>
+                    <option value="Alpa" ${statusTersimpan==='Alpa'?'selected':''}>Alpa</option>
+                </select></td>`;
+            tbody.appendChild(tr);
+            
+            // Set warna box dropdown otomatis sesuai statusnya
+            updateWarnaStatus(tr.querySelector('select'));
+        });
+
+        // Ganti warna & teks tombol jika ternyata Mode Edit
+        const btnSimpan = document.querySelector('#absensi-page .btn-primary');
+        if (dataHariIni.length > 0) {
+            Swal.fire({title: 'Mode Edit Aktif', text: 'Presensi kelas ini sudah diisi. Anda dapat mengoreksi data yang salah lalu klik Perbarui.', icon: 'info', toast: true, position: 'top-end', showConfirmButton: false, timer: 4500});
+            btnSimpan.innerHTML = '<i class="fa-solid fa-pen-to-square"></i> Perbarui Data Presensi';
+            btnSimpan.style.backgroundColor = '#f59e0b'; // Ubah tombol jadi Oranye agar jelas
+        } else {
+            btnSimpan.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Simpan Presensi Ke Database';
+            btnSimpan.style.backgroundColor = 'var(--primary)'; // Kembalikan ke warna default (Biru)
+        }
+    })
+    .catch(err => {
+        // Jika internet lambat/gagal, kembalikan tampilan tabel menjadi kosong
+        tbody.innerHTML = `<tr><td colspan="4"><div class="empty-state"><p style="color:var(--danger)">Gagal terhubung ke database. Silakan Refresh.</p></div></td></tr>`;
     });
 }
 

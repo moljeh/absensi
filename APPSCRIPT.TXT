@@ -107,8 +107,9 @@ function doPost(e) {
         JSON.stringify({ result: "success", data: allSiswa })
       ).setMimeType(ContentService.MimeType.JSON);
     }
-    // ====================================================
-    // 3. SIMPAN PRESENSI HARIAN 
+
+// ====================================================
+    // 3. SIMPAN ATAU UPDATE PRESENSI HARIAN (FITUR EDIT)
     // ====================================================
     else if (action === "simpan_absensi") {
       var kelas = contents.kelas;
@@ -123,55 +124,68 @@ function doPost(e) {
       if (!sheetAbsensi) {
         sheetAbsensi = ss.insertSheet(sheetAbsensiName);
         sheetAbsensi.appendRow(["Timestamp", "Tanggal", "Kelas", "NIS", "Nama", "Status Kehadiran", "Koordinat Lokasi"]);
-      } else {
-        var existingData = sheetAbsensi.getDataRange().getValues();
-        for (var i = existingData.length - 1; i > 0; i--) { 
-          var rawTgl = existingData[i][1];
-          var tglStr = "";
-          
-          if (rawTgl instanceof Date) {
-            var y = rawTgl.getFullYear();
-            var m = String(rawTgl.getMonth() + 1).padStart(2, '0');
-            var d = String(rawTgl.getDate()).padStart(2, '0');
-            tglStr = y + "-" + m + "-" + d;
-          } else {
-            tglStr = String(rawTgl);
-          }
+      }
 
-          if (tglStr === tanggal) {
-             return ContentService.createTextOutput(
-               JSON.stringify({ 
-                 result: "error", 
-                 message: "Kelas " + kelas + " SUDAH diabsen untuk tanggal " + tanggal + ". Anda tidak bisa absen dua kali di hari yang sama." 
-               })
-             ).setMimeType(ContentService.MimeType.JSON);
-          }
+      var existingData = sheetAbsensi.getDataRange().getValues();
+      var isUpdate = false;
+      
+      // Deteksi apakah tanggal ini sudah pernah disubmit
+      for (var i = existingData.length - 1; i > 0; i--) { 
+        var rawTgl = existingData[i][1];
+        var tglStr = "";
+        if (rawTgl instanceof Date) {
+          var y = rawTgl.getFullYear();
+          var m = String(rawTgl.getMonth() + 1).padStart(2, '0');
+          var d = String(rawTgl.getDate()).padStart(2, '0');
+          tglStr = y + "-" + m + "-" + d;
+        } else {
+          tglStr = String(rawTgl);
+        }
+
+        if (tglStr === tanggal) {
+           isUpdate = true;
+           break; 
         }
       }
 
-      var rowsToAppend = [];
-      for (var m = 0; m < dataAbsensi.length; m++) {
-        rowsToAppend.push([
-          timestamp,
-          tanggal,
-          kelas,
-          dataAbsensi[m].nis,
-          dataAbsensi[m].nama,
-          dataAbsensi[m].status,
-          kordinatInfo 
-        ]);
+      if (isUpdate) {
+        // --- MODE EDIT / UPDATE DATA LAMA ---
+        for (var m = 0; m < dataAbsensi.length; m++) {
+          var nisInput = String(dataAbsensi[m].nis);
+          var statusInput = dataAbsensi[m].status;
+          
+          for (var r = existingData.length - 1; r > 0; r--) {
+            var rTgl = existingData[r][1];
+            var rTglStr = "";
+            if (rTgl instanceof Date) {
+              var ry = rTgl.getFullYear();
+              var rm = String(rTgl.getMonth() + 1).padStart(2, '0');
+              var rd = String(rTgl.getDate()).padStart(2, '0');
+              rTglStr = ry + "-" + rm + "-" + rd;
+            } else {
+              rTglStr = String(rTgl);
+            }
+
+            // Jika tanggal & NIS cocok, timpa data statusnya
+            if (rTglStr === tanggal && String(existingData[r][3]) === nisInput) {
+              sheetAbsensi.getRange(r + 1, 6).setValue(statusInput);
+              break;
+            }
+          }
+        }
+        return ContentService.createTextOutput(JSON.stringify({ result: "success", message: "Data presensi berhasil diperbarui (Mode Edit)!" })).setMimeType(ContentService.MimeType.JSON);
+
+      } else {
+        // --- MODE INSERT BARU (PERTAMA KALI ABSEN) ---
+        var rowsToAppend = [];
+        for (var m = 0; m < dataAbsensi.length; m++) {
+          rowsToAppend.push([timestamp, tanggal, kelas, dataAbsensi[m].nis, dataAbsensi[m].nama, dataAbsensi[m].status, kordinatInfo]);
+        }
+        if (rowsToAppend.length > 0) {
+          sheetAbsensi.getRange(sheetAbsensi.getLastRow() + 1, 1, rowsToAppend.length, rowsToAppend[0].length).setValues(rowsToAppend);
+        }
+        return ContentService.createTextOutput(JSON.stringify({ result: "success", message: "Presensi berhasil disimpan!" })).setMimeType(ContentService.MimeType.JSON);
       }
-
-      if (rowsToAppend.length > 0) {
-        sheetAbsensi.getRange(
-          sheetAbsensi.getLastRow() + 1, 1, rowsToAppend.length, rowsToAppend[0].length
-        ).setValues(rowsToAppend);
-      }
-
-      return ContentService.createTextOutput(
-        JSON.stringify({ result: "success", message: "Presensi berhasil disimpan!" })
-      ).setMimeType(ContentService.MimeType.JSON);
-
     }
     // ====================================================
     // 4. AMBIL REKAP DATA ABSENSI

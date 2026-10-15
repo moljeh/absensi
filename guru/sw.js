@@ -1,4 +1,5 @@
-const CACHE_NAME = 'eduabsensi-guru-v1';
+const CACHE_NAME = 'eduabsensi-guru-v2'; // Naikkan versi agar cache lama terhapus
+
 const urlsToCache = [
   './',
   './index.html',
@@ -10,7 +11,9 @@ const urlsToCache = [
   'https://cdn.jsdelivr.net/npm/sweetalert2@11'
 ];
 
+// PROSES INSTALL: Simpan file utama ke Cache
 self.addEventListener('install', event => {
+  self.skipWaiting(); // Paksa Service Worker baru langsung aktif
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
@@ -19,12 +22,41 @@ self.addEventListener('install', event => {
   );
 });
 
+// PROSES AKTIVASI: Hapus Cache versi lama jika ada
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.map(cacheName => {
+          if (cacheName !== CACHE_NAME) {
+            console.log('Menghapus cache lama:', cacheName);
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    }).then(() => self.clients.claim())
+  );
+});
+
+// PROSES FETCH: STRATEGI "NETWORK FIRST" (Prioritaskan Internet, jika offline pakai Cache)
 self.addEventListener('fetch', event => {
+  // Pengecualian: Biarkan Google Apps Script berjalan normal tanpa di-cache
+  if (event.request.url.includes('script.google.com') || event.request.url.includes('script.googleusercontent.com')) {
+      return; 
+  }
+
   event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        if (response) return response;
-        return fetch(event.request);
+    fetch(event.request)
+      .then(networkResponse => {
+        // Jika berhasil mengambil dari internet, simpan salinannya ke cache untuk jaga-jaga offline
+        return caches.open(CACHE_NAME).then(cache => {
+          cache.put(event.request, networkResponse.clone());
+          return networkResponse;
+        });
+      })
+      .catch(() => {
+        // Jika internet terputus (offline), ambil dari Cache
+        return caches.match(event.request);
       })
   );
 });
